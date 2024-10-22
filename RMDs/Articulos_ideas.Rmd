@@ -1,0 +1,190 @@
+---
+title: "Articulos leidos e ideas"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+# Metagenómica
+
+## Microbiota
+
+#### **Jain et al. 2024 *Characterisation ofLPS+ bacterial extracellular vesicles along the gut-hepatic portal vein-liver axis***
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11245684/#>
+
+-   The bEVs can be divided into distinct categories based on their secretory pathways as outer membrane vesicles (OMVs), outer- inner membrane vesicles, cytoplasmic membrane vesicles and tube-shaped membranous structures (Toyofuku et al., 2019). The OMVs are derived from gram-negative bacteria, and hence, their outer leaflet consists of lipopolysaccharide (LPS) along with bacterial outer membrane proteins (Avila-Calderón et al., 2021).
+
+-   The potential pathogenic bacteria and their products interact with toll-like receptors (TLRs) present on the membrane ofthe gut immune cells, as well as on the cellular membrane of the gut epithelium, to turn on the body’s defence mechanism by activation of the innate immune system.LPS derived from the outer membrane of gram-negative bacteria (and hence present on bEV surface) binds to TLR4 and activate pro-inflammatory signalling.
+
+-   We observed significant decrease in faecal-EVtotal in obese mice, which could be associated with reduced bacterial diversity associated with obesity-related gut dysbiosis (Cuevas-Sierra et al., 2019) and also with gut leakiness, resulting in increased accessibility of these EVs to the peripheral circulation. In line with this observation, we noticed a signif- icant increase in the total EVs isolated from hepatic portal vein blood with a significant contribution from the bacterial LPS+ EVs.
+
+-   Further, TLR4 is crucial in controlling intestinal epithelial homeostasis (Inoue et al., 2017)and the reduced expression of TLR4 in small intestine could affect barrier and absorptive functions
+
+-   The higher abundance of LPS+ EV in the liver tissue ofDIOmice also supports that the liver, along with the intestine, may play a crucial role in regulating the infiltration of bEV into the circulation. In both the lean and DIO mice, we detected LPS+ EV in the liver tissue, though it is possible that, under healthy conditions, LPS+ EV act to prime immune cells and keep the immune system ‘battle ready,’ whereas in the gut dysbiosis (obesity) condition, LPS+ EV, due to higher concentration and unique cargo, puts a stiff challenge to immune cells and creates a pro-inflammatory condition (‘real battle’).
+
+Notas: Técnicas para detectar EVs. Dicen que hay una regulación de microbiota en condiciones de disbiosis. Tambien que las bEVs del higado mantienen en alerta al higado manteniendo el cargo bajo y que cuando hay enfermedad el cargo sube y hay inflamación
+
+#### Albhaisi 2020 Role of gut microbiota in liver disease
+
+<https://pubmed.ncbi.nlm.nih.gov/31657225/>
+
+-   There are \~1014 microbial species in the intestine; the great majority of these are commensals from the Firmicutes and Bacteroides phyla with minor contributions from other phyla such as Cyanobacteria and Proteobacteria (33). At birth, the human intestine is relatively sterile, but with onset of feeding bacterial colonization occurs rapidly. This involves an oral- aboral trend where the upper small intestine has low levels of bacteria, which are mainly gram-negative aerobic bacteria.
+
+-   The intestinal microbiome in obesity is less diverse than that in healthy lean individuals (111). Most studies have noted an increase in the Firmicutes-to-Bacteroidetes ratio with both increases in Firmicutes and a decrease in Bacteroidetes phylum (118).
+
+-   NAFLD was associated with less abundance of microbial gene and alterations in branched-chain amino acid and aromatic amino acid pathways and endotoxin synthesis (48). Serum phenylacetic acid, a product of amino acid metabolism, had the strongest associa- tion with NAFLD.
+
+-   Microbial products such as endotoxin or lipopolysaccharide (LPS) can get translocated via impaired intestinal tight junctions in the portal circulation, resulting in cytokine activation through Toll-like receptors (TLRs) and release of interleukin (IL)-8 that stimulates inﬂam- matory reaction, potentially leading to hepatic inﬂammation and ﬁbrosis (47, 79).
+
+Notas: revisión que cuenta el papel que tiene el gut microbioma en las enfermedades hepáticas. Podría ser interesante en un futuro porque hace un resumen del taxa en cada enfermedad.
+
+#### Nakamoto 2019 **Gut pathobionts underlie intestinal barrier dysfunction and liver T helper 17 cell immune response in primary sclerosing cholangitis**
+
+<https://pubmed.ncbi.nlm.nih.gov/30643240/>
+
+-   P rimary sclerosing cholangitis (PSC) is a chronic cholestatic liver disease characterized by the development of bile-duct strictures and the destruction of biliary trees that lead to end-stage liver cirrhosis.
+
+-   After stable colonization of the human gut microbiota, we exam- ined T cell profiles in the livers and colons of the gnotobiotic mice (Fig. 1b,c). As previously described15 , TH17 priming was induced in the colon, but not in the liver, of HC mice (Fig. 1d,e).
+
+-   These results suggested that K. pneumoniae may induce epithelial pore formation through apoptotic and inflammatory signalling in a contact-dependent manner. Interestingly, the epithelial pore-induc- ing capacity of K. pneumoniae varied among the strains, of which seven strains induced pore formation, whereas four did not (Fig. 5c and Supplementary Fig. 6e).
+
+-   members of the Enterobacteriaceae family, including K. pneumoniae, were often observed in the microbiota of individuals with hepatobiliary diseases, such as liver cirrhosis
+
+notas: hay ciertas bacterias que son propensas a crear poros en el epitelio intestinal que promueven inflmación en el hígado
+
+#### Demir 2022 The Fecal Mycobiome in Non-alcoholic Fatty Liver Disease
+
+<https://pubmed.ncbi.nlm.nih.gov/34896404/>
+
+-   Sparse InversE Covariance estimation for Ecological Association and Statistical Inference (SpiecEasi) was used to perform a network analysis between fungi and bacteria
+
+Notas: interesante la parte de las probabilidades según histologia (Associations between compositional fecal mycobiota changes and liver histology features).
+
+#### Qu 2023 **DT-109 ameliorates nonalcoholic steatohepatitis in nonhuman primates**
+
+<https://pubmed.ncbi.nlm.nih.gov/37040763/>
+
+-   
+
+Notas: Hablan poco de metagenómica. Encuentran diferencian a nivel de genus pero no de phylum o de class. Habrá que hacer un analisis más profundo. Hacen algo parecido al DESeq para ver las especies más presentes en sanos y enfermos. Correlacionan las covariables con las especies encontradas en la metagenómica.
+
+#### Sun 2023 Intratumoural microbiome can predict the prognosis of hepatocellular carcinoma after surgery
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10353526/>
+
+-   Microbial network analysis and visualisation were performed using the R package ‘ggClusterNet’.27 PICRUSt28 was used for functional prediction of micro- biomes based on the Greengene andKyoto Encyclopedia of Genes and Genomes (KEGG) databases. Differential path- ways were displayed via STAMP software.29
+
+Notas: Muy interesante para seguir los pasos que ellos siguen. Solamente utilizan microbiota y datos clinicos asi que es muy bueno para seguir paso a paso.
+
+#### Loomba 2017 Gut microbiome based metagenomic signature for non-invasive detection of advanced fibrosis in human nonalcoholic fatty liver disease
+
+<https://pubmed.ncbi.nlm.nih.gov/28467925/>
+
+-   Utilizan RF para extraer las especies más importantes. Luego hacen un analisis de metabolitos y una predicción de metabolitos a traves del metagenoma.
+
+-   Está bastante mal escrito la verdad pero se pueden sacar cosas interesantes de metodología
+
+------------------------------------------------------------------------
+
+## Análisis
+
+#### **Ling et al 2022 Batch effects removal for microbiome data via conditional quantile regression**
+
+<https://www.nature.com/articles/s41467-022-33071-9#Sec9>
+
+-   Batch effects are not unique to microbiome data9,and standard tools have been developed for other genomic technologies, with the most commonly applied approach being ComBat10 . However, ComBat and related methods that remove genomic batch effects assume con- tinuous, normally distributed outcomes....Recently, MMUPHin15 extended ComBat to microbiome analysis by considering zero inﬂation. But ultimately, it assumes the data to be zero-inﬂated Gaussian, which is only appropriate for certain transformations of relative abundance data (i.e., taxon counts normalized by each sample’s library size). Therefore, more ﬂexible approaches are needed.
+
+-   ConQuR works directly on taxonomic read counts and generates corrected read counts that enable all ofthe usual microbiome analyses (visualization, association analysis, prediction, etc.) with few restrictions. ConQuR assumes that for each microorganism, samples share the same conditional distribution if they have identical intrinsic characteristics (with the same values for key variables and important covariates, e.g., clinical, demographic, genetic, and other features), regardless of in which batch they were processed. This does not mean the samples have identical observed values, but they share the same distribution for that microbe. Then operationally, for each taxon and each sample, ConQuR non-parametrically models the underlying dis- tribution of the observed value, adjusting for key variables and covari- ates, and removes the batch effects relative to a chosen reference batch.
+
+-   The two versions address different needs: ConQuR views the variability from library size as part of the batch effects and mitigates it in the procedure, while ConQuR-libsize explicitly separates it during batch removal and focuses more on the relative measure. We recommend ConQuR as the default as this paper focuses on taxonomic read counts, inwhichbetween-batch library size differences are usually considered nuisance variability.
+
+-   Despite the advantages of ConQuR, it has several limitations which are shared by most existing batch removal procedures. First, comprehensive metadata is required to estimate the conditional dis- tributions of read counts accurately. Second, ConQuR uses the meta- data twice, in both the correction and subsequent analyses, theoretically leading to over-optimism in association analysis43 .How- ever, in practice, this bias is modest relative to the batch effects, and the inclusion of metadata is often helpful for estimating conditional distributions when the taxon is uncommon or imbalanced among batches. Third, ConQuR cannot work if batch completely confounds the key variable. Finally, the performance of all methods depends on the ability to accurately estimate the batch effects, and thus, all methods suffer in the presence of too many small batches (limited information for estimation) and small numbers of sequences/library sizes (poor data quality).
+
+Notas: Vamos a probarlo con nuestros datos. Tiene en cuenta las covariables y no se si eso sesga demasiado los resultados. Parece que lo hace muy bien. Tengo duda tambien cual es la salida con respecto a los datos. Es mejor quitar sesgo de batch antes de hacer TSE?
+
+#### Sepich-Poore 2024 Robustness of cancer microbiome signals over a broad range of methodological variation
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10997506/>
+
+-   we conclude that VSNM did not systematically bias the data: (i) equivalent ML model performances and signiﬁcantly similar feature rankings result from the raw data; (ii) we observe equivalent negative control responses.
+
+-   Collectively, these data suggest that a microbiome-speciﬁc batch correction method (ConQuR) can indeed retain greater within- batch feature variability than a non-microbiome-speciﬁc batch correction method (VSNM), although for most cases the difference is in the degree of preservation rather than if they are preserved.
+
+-   Both ConQuR-corrected (Fig. 3) and VSNM-corrected (Supple- mentary Fig. 9) WIS-overlapping genera provided pan-cancer discrimination using multiclass ML, in agreement with per-batch analyses of the raw data (Supplementary Figs. 10–15). Thus, with respect to batch correction, the use of VSNM, or a modern microbiome-speciﬁc method, ConQuR, are consistent with the raw data and do not change our original conclusions about cancer type-speciﬁc microbiomes.
+
+-   Although results were similar, we generally recommend ConQuR because it is more compatible with downstream workﬂows than VSNM, more effective than MMU- PHin, and because it does not require log-transform of the data and conversion back to per-sample counts. However, we did ﬁnd that ConQuR can, in some circumstances, introduce technical artifacts that VSNM does not (Supplementary Fig. 25B, 30B), possibly because of the user choices that the supervised aspects of the method require.
+
+Notas: Parece un articulo de respuesta a unas criticas que hicieron otros. Los autores dicen que usemos ConQuR pero hay que tener cuidado con los parámetros.
+
+#### Liu 2020 A practical guide to amplicon and metagenomic analysis of microbiome data
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8106563/>
+
+-   Although amplicon sequencing can provide only the taxo- nomic composition of microbiota, it is cost effective (\$20–50 per sample) and can be applied to large-scale research. In addition, the amount of data generated from amplicon sequencing is relatively small, and the analysis is quick and easy to perform. For example, data analysis of 100 amplicon samples could be completed within a day using an ordinary laptop computer. Thus, amplicon sequencing is often used in pioneering research. In contrast to amplicon sequencing, metagenomic sequencing not only extends taxonomic res- olution to the species- or strain-level but also provides potential functional information. Metagenomic sequencing also makes it possible to assemble microbial genomes from short reads. However, it does not perform well for low-bio- mass samples or those severely contaminated by the host genome (Fig. 1B).
+
+-   PICRUSt (Langille et al., 2013), which is based on the OTU table of the Greengenes database (McDonald et al., 2011), could be used to predict the metagenomic functional composition (Zheng et al., 2019)of Kyoto Encyclopedia of Genes and Genomes (KEGG) path- ways (Kanehisa and Goto, 2000). The newly developed PICRUSt2 software package (<https://github.com/picrust/> picrust2) can directly predict metagenomic functions based on an arbitrary OTU/ASV table. The R package Tax4Fun (Asshauer et al., 2015) can predict KEGG functional capa- bilities of microbiota based on the SILVA database (Quast et al., 2013). The functional annotation of prokaryotic taxa (FAPROTAX) pipeline performs functional annotation based on published metabolic and ecological functions such as nitrate respiration, iron respiration, plant pathogen, and ani- mal parasites or symbionts, making it useful for environ- mental (Louca et al., 2016), agricultural (Zhang et al., 2019), and animal (Ross et al., 2018) microbiome research. Bug- Base is an extended database of Greengenes used to pre- dict phenotypes such as oxygen tolerance, Gram staining and pathogenic potential (Ward et al., 2017); this database is mainly used in medical research (Mahnert et al., 2019).
+
+-   
+
+Notas: MUY INTERESANTE LA TABLA 2.
+
+------------------------------------------------------------------------
+
+## Machine Learing and Deep learning
+
+#### Tae Gyu Oh et al 2020 A Universal Gut Microbiome-Derived Signature Predicts Cirrhosis
+
+<https://pubmed.ncbi.nlm.nih.gov/32610095/>
+
+-   
+
+Notas: Primero hace un analisis estadistico de cada variable clinica entre control y cirrosis para ver las variables significativas. Luego un ensayo metagenómico. Compara solamente un alfa diversidad invSimpson. Luego PCoA. Luego RF con la variable cirrosis para buscar las especies de bacterias más importantes segun Gini. Una vez escogidos los más importantes hace un DESeq2 con las especies y las muestra las up en cirrosis y las down en cirrosis. Luego hace correlaciones entre especies y clinica. Luego clinica y metabolitos. Luego metabolitos y especies. Luego modelo.
+
+#### Su 2022 Faecal microbiome-based machine learning for multi-class disease diagnosis
+
+<https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9649010/>
+
+-   we tested the speciﬁcity of our trained binary models in unrelated diseases, and the results showed a high misdiagnosis rate (average 0.52, IQR 0.41–0.65, Source Data, Supplementary Fig. 2d). These results suggested that the binary clas- siﬁer failed to capture real disease-speciﬁc features based solely on single disease versus control samples.
+
+-   
+
+Notas:
+
+#### Yu 2018 Revisit of Machine Learning Supported Biological and Biomedical Studies
+
+<https://pubmed.ncbi.nlm.nih.gov/29536444/>
+
+-   a
+
+#### Bhat 2022 Artiﬁcial intelligence, machine learning, and deep learning in liver transplantation
+
+<https://pubmed.ncbi.nlm.nih.gov/37208107/>
+
+-   
+
+Notas: Interesante revisión para recoger ideas de modelos de ML y DL para hacer con nuestros datos. Se utiliza mucho las ANN. Creo que es buena idea hacer LOOCV para el training del modelo ya que tenemos pocos pacientes para ver.
+
+#### Shen 2022 **Enhanced metagenomic deep learning for disease prediction and consistent signature recognition by restructured microbiome 2D representations**
+
+<https://pubmed.ncbi.nlm.nih.gov/36699735/>
+
+Hacen una conversión bidimensional de los datos metagenómicos para predecir enfermedades y buscar biomarkers de especies. GUAPISIMO.
+
+------------------------------------------------------------------------
+
+# Ideas
+
+-   Utilizar Voom-SNM (VSNM) normalization. Ver si esta normalización per se reduce el batch effect.
+-   Probar otros metodos de normalizacion del batch

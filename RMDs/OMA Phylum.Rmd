@@ -1,0 +1,1395 @@
+---
+title: "OMA Phylum"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, warning=FALSE, message=FALSE}
+source("Librerias.R")
+source("utils.R")
+
+load("../Rdatas/cargar_tse.RData")
+load("../Rdatas/curatedMetagenomicData.RData")
+load("../Rdatas/higados desde SRA.RData")
+```
+
+
+# Cargar muestras
+
+## Phylum
+
+```{r}
+lp_nombres <- rownames(assay(agglomerateByRank(tse_lp, rank = "Phylum")))
+t1_nombres <- rownames(assay(agglomerateByRank(tse_t1, rank = "Phylum")))
+sra_nombres <- rownames(assay(agglomerateByRank(tse_higado_sra, rank = "Phylum")))
+bilis_nombres <- rownames(assay(agglomerateByRank(tse_bilis, rank = "Phylum")))
+stool_nombres <- rownames(assay(agglomerateByRank(tse_stool, rank = "Phylum")))
+
+setdiff(c(lp_nombres, t1_nombres, bilis_nombres), c(sra_nombres, stool_nombres))
+cat("\n")
+setdiff(c(sra_nombres, stool_nombres), c(lp_nombres, t1_nombres, bilis_nombres))
+
+correspondencia_nombres <- c("Acidobacteriota" = "Acidobacteria",
+                             "Actinobacteriota" = "Actinobacteria",
+                             "Bacteroidota" = "Bacteroidetes",
+                             "Gemmatimonadota" = "Gemmatimonadetes",
+                             "Nitrospirota" = "Nitrospirae"
+                             )
+
+sra_nombres <- ifelse(sra_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres], 
+                      sra_nombres)
+stool_nombres <- ifelse(stool_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[stool_nombres], 
+                      stool_nombres)
+
+cat("\n")
+setdiff(c(lp_nombres, t1_nombres, bilis_nombres), c(sra_nombres, stool_nombres))
+cat("\n")
+setdiff(c(sra_nombres, stool_nombres), c(lp_nombres, t1_nombres, bilis_nombres))
+
+rowData(tse_higado_sra)$Phylum <- ifelse(rowData(tse_higado_sra)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_higado_sra)$Phylum],
+                      rowData(tse_higado_sra)$Phylum)
+
+rowData(tse_stool)$Phylum <- ifelse(rowData(tse_stool)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_stool)$Phylum],
+                      rowData(tse_stool)$Phylum)
+
+```
+
+## Class
+
+```{r}
+lp_nombres <- rownames(assay(agglomerateByRank(tse_lp, rank = "Class")))
+t1_nombres <- rownames(assay(agglomerateByRank(tse_t1, rank = "Class")))
+sra_nombres <- rownames(assay(agglomerateByRank(tse_higado_sra, rank = "Class")))
+bilis_nombres <- rownames(assay(agglomerateByRank(tse_bilis, rank = "Class")))
+stool_nombres <- rownames(assay(agglomerateByRank(tse_stool, rank = "Class")))
+
+setdiff(c(lp_nombres, t1_nombres, bilis_nombres), c(sra_nombres, stool_nombres))
+cat("\n")
+setdiff(c(sra_nombres, stool_nombres), c(lp_nombres, t1_nombres, bilis_nombres))
+
+correspondencia_nombres <- c("Acidobacteriae" = "Acidobacteria",
+                             "Nitrospiria" = "Nitrospira"
+                             )
+
+sra_nombres <- ifelse(sra_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres], 
+                      sra_nombres)
+stool_nombres <- ifelse(stool_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[stool_nombres], 
+                      stool_nombres)
+
+cat("\n")
+setdiff(c(lp_nombres, t1_nombres, bilis_nombres), c(sra_nombres, stool_nombres))
+cat("\n")
+setdiff(c(sra_nombres, stool_nombres), c(lp_nombres, t1_nombres, bilis_nombres))
+
+rowData(tse_higado_sra)$Class <- ifelse(rowData(tse_higado_sra)$Class %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_higado_sra)$Class],
+                      rowData(tse_higado_sra)$Class)
+
+rowData(tse_stool)$Class <- ifelse(rowData(tse_stool)$Class %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_stool)$Class],
+                      rowData(tse_stool)$Class)
+
+```
+
+Vamos a estandarizar los valores para que la media sea 0 en todos los casos.
+"‘standardize’ Standardize(or ‘z-score’) transformation scales data to zero mean and unit variance. This is used to bring features (or samples) to more comparable levels in terms of mean and scale of the values. This can enhance visualization and interpretation of the data"
+
+```{r}
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "relabundance")
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "standardize")
+tse_lp <- transformAssay(tse_lp, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "relabundance")
+tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "standardize")
+tse_t1 <- transformAssay(tse_t1, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "counts", method = "relabundance")
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "counts", method = "standardize")
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_bilis <- transformAssay(tse_bilis, assay.type = "counts", method = "relabundance")
+tse_bilis <- transformAssay(tse_bilis, assay.type = "counts", method = "standardize")
+tse_bilis <- transformAssay(tse_bilis, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+```
+
+
+```{r}
+tse_lp_phylum <- agglomerateByRank(tse_lp, rank = "Phylum")
+tse_t1_phylum <- agglomerateByRank(tse_t1, rank = "Phylum")
+tse_higado_sra_phylum <- agglomerateByRank(tse_higado_sra, rank = "Phylum")
+tse_bilis_phylum <- agglomerateByRank(tse_bilis, rank = "Phylum")
+tse_stool_phylum <- agglomerateByRank(tse_stool, rank = "Phylum")
+```
+
+# Community composition
+
+## Relative abundance
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool),
+                                             ranking = "Phylum",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_10") + 
+    labs(title = "Phylum Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+```{r}
+tse_lp_phylum <- agglomerateByRank(tse_lp, "Phylum")
+
+counts_lp <- as.data.frame(t(assay(tse_lp_phylum))) %>% 
+    rownames_to_column(var = "sample")
+
+
+covariates_lp <- colData(tse_lp_phylum) %>%
+    as.data.frame()%>%
+    rownames_to_column(var = "sample")
+
+dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
+    dplyr::select(intersect(names(.), names(counts_lp)), Supervivencia, -sample) %>%
+    pivot_longer(-Supervivencia, names_to = "Taxon", values_to = "Abundance") %>%
+    group_by(Supervivencia, Taxon) %>%
+    summarize(suma = sum(Abundance)) %>%  
+    group_by(Supervivencia) %>%
+    mutate(suma_condition = sum(suma),  
+           relative_abundance = suma / suma_condition) %>%
+    ggplot(aes(x=Supervivencia, y=relative_abundance, fill = Taxon)) +
+    geom_bar(stat = "identity") +
+    #scale_fill_paletteer_d("ggthemes::Tableau_10") + 
+    labs(title = "Phylum Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "none",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) 
+
+
+```
+
+#### Randon forest
+
+```{r}
+library(caret)
+library(randomForest)
+library(doParallel)
+num_cores <- detectCores() - 2
+registerDoParallel(cores=num_cores)
+```
+
+```{r}
+modelLookup("ranger")
+```
+
+Aquí he utilizado el parámetro importance = "permutation"
+
+```{r}
+
+aglomerado <- agglomerateByRank(tse_lp, "Phylum")
+
+counts_lp <- as.data.frame(t(assay(aglomerado, "relabundance"))) %>% 
+    rownames_to_column(var = "sample")
+
+
+covariates_lp <- colData(aglomerado) %>%
+    as.data.frame()%>%
+    rownames_to_column(var = "sample")
+
+para_RF <- dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
+    dplyr::select(intersect(names(.), names(counts_lp)), Supervivencia, -sample)
+
+# Definir una función para calcular la Accuracy balanceada
+balanced_accuracy <- function(data, lev = NULL, model = NULL) {
+  cm <- confusionMatrix(data$pred, data$obs)
+  sensitivity <- cm$byClass["Sensitivity"]
+  specificity <- cm$byClass["Specificity"]
+  balanced_acc <- mean(c(sensitivity, specificity))
+  c(BalancedAccuracy = balanced_acc)
+}
+
+# Definir las métricas de evaluación que queremos utilizar
+RFControl <- trainControl(
+  method = "cv", 
+  number = 10,
+  repeats = 10,
+  summaryFunction = balanced_accuracy,
+  allowParallel = TRUE,
+  seeds = NULL, 
+  returnResamp = "final",
+)
+
+set.seed(1234)
+sqr.genes <- round(sqrt(ncol(counts_lp)))
+
+mygrid <- expand.grid(mtry = c(sqr.genes - 2, sqr.genes - 1, sqr.genes, sqr.genes+1, sqr.genes+2),
+                      splitrule = c("gini", "extratrees"),
+                      min.node.size = 1)
+trees <- seq(500, 3000, 500) 
+
+rf.cv.10 <- list() # lista vacia para meter los resultados de cada bucle
+for (tree in trees){ # bucle en cada pasada hace un modelo con un número de arboles distintos
+  modelo <- train(Supervivencia ~., data=para_RF,
+                  method="ranger",
+                  tuneGrid=mygrid,
+                  trControl=RFControl, 
+                  ntree = tree,
+                  # metric = "BalancedAccuracy",
+                  importance = "permutation" # o impurity permutation https://arxiv.org/abs/1407.7502
+  )
+  rf.cv.10[[paste(tree, "trees")]] <- modelo # metemos el modelo en la lista
+}
+```
+
+```{r, fig.width=8, fig.height= 5}
+
+datos_combinados <- data.frame()
+for (i in names(rf.cv.10)){
+    
+    if (nrow(datos_combinados) == 0 ){
+        
+       datos_combinados <- data.frame(mtry = rf.cv.10[[i]]$results$mtry, splitrule = rf.cv.10[[i]]$results$splitrule, MetricValue = rf.cv.10[[i]]$results$BalancedAccuracy, Trees = i, Metric = "Balanced Accuracy")
+        
+    } else {
+        
+        tmp <- data.frame(mtry = rf.cv.10[[i]]$results$mtry, splitrule = rf.cv.10[[i]]$results$splitrule, MetricValue = rf.cv.10[[i]]$results$BalancedAccuracy, Trees = i, Metric = "Balanced Accuracy")
+        
+        datos_combinados <- rbind(datos_combinados, tmp)
+        
+    }
+}
+
+#datos_combinados$Trees <- factor(datos_combinados$Trees, levels = c("500 trees", "1000 trees", "1500 trees", "2000 trees"))
+
+datos_combinados %>%
+    # filter(splitrule == "extratrees") %>%
+    filter(Metric == "Balanced Accuracy") %>%
+    ggplot(aes(x = mtry, y = MetricValue, color = Trees)) +
+    geom_point(size = 4) +
+    #scale_color_manual(values = c("#C19A6B", "#A3C9A8", "#5B9279", "#264E36")) +
+    geom_line(linetype = "dashed") +
+    theme_minimal() +
+    labs(x = "Mtry", y = "Precisión balanceada", title = "Entrenamiento RF") +
+    facet_wrap(~ splitrule)
+ 
+```
+
+```{r}
+important.genes.umap1pos <- varImp(rf.cv.10$`500 trees`)$importance %>% 
+  rownames_to_column() %>%
+  arrange(desc(Overall))
+
+reactable::reactable(important.genes.umap1pos)
+
+important.genes.umap1pos %>%
+  head(50) %>%
+  mutate(row_index = row_number(),  # Crear una columna numérica para el índice
+         rowname = forcats::fct_inorder(rowname)) %>%
+  ggplot(aes(x = row_index, y = Overall)) +  # Usar row_index en el eje X
+    geom_point() +
+    geom_line() +
+    labs(x = "", title = "Importancia Phylum en Supervivencia") +
+    theme_bw() +
+    theme(axis.text.x = element_text(size = 10))
+```
+
+```{r}
+para_RF %>% 
+    pivot_longer(-Supervivencia) %>% 
+    dplyr::filter(name == "Tenericutes") %>%
+    ggplot(aes(Supervivencia, value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x=Supervivencia, y = value)) + 
+    stat_compare_means(label = "p.signif")
+```
+
+
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool),
+                                             ranking = "Class",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+    labs(title = "Class Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool),
+                                             ranking = "Order",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+    labs(title = "Order Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool),
+                                             ranking = "Genus",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+    labs(title = "Genus Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  #tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool
+                                                  ),
+                                             ranking = "Species",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+    labs(title = "Genus Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+## Differential Abundance Analysis (DAA)  
+
+### Counts
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp))
+metadata$Supervivencia <- relevel(metadata$Supervivencia, ref = "SI")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~Supervivencia)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Rejection",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "Survival", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "Survival"=4, "Rejection"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "Survival" = 0.75, "Rejection" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "Rejection"="#FDE725FF", "Survival"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: Survival vs Rejection") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+### ALDEx2
+
+<https://bioconductor.org/packages/release/bioc/vignettes/ALDEx2/inst/doc/ALDEx2_vignette.html#1_Introduction_to_ALDEx2>
+
+```{r}
+library(ALDEx2)
+
+selex.sub
+
+x.aldex <- aldex(data.frame(assay(tse_lp)), 
+                 as.vector(colData(tse_lp)$Supervivencia), 
+                 test="kw", 
+                 effect=TRUE, 
+                 include.sample.summary=T, 
+                 denom="all", 
+                 verbose=FALSE, 
+                 paired.test=FALSE, 
+                 gamma=NULL)
+
+par(mfrow=c(1,3))
+aldex.plot(x.aldex, type="MA", test="welch", xlab="Log-ratio abundance",
+    ylab="Difference", main='Bland-Altman plot')
+aldex.plot(x.aldex, type="MW", test="welch", xlab="Dispersion",
+    ylab="Difference", main='Effect plot')
+aldex.plot(x.aldex, type="volcano", test="welch", xlab="Difference",
+    ylab="-1(log10(q))", main='Volcano plot') 
+```
+
+
+
+
+## Unique species
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Phylum", sort = TRUE),
+                    T1= getUnique(tse_t1, "Phylum", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Phylum", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Phylum", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Phylum", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Phylum", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Class", sort = TRUE),
+                    T1= getUnique(tse_t1, "Class", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Class", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Class", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Class", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Class", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Genus", sort = TRUE),
+                    T1= getUnique(tse_t1, "Genus", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Genus", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Genus", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Genus", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Genus", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+
+
+
+
+```{r}
+# Add clr-transformation on samples
+tse_lp_phylum <- transformAssay(
+    tse_lp_phylum, assay.type = "counts", method = "relabundance", pseudocount = 1)
+tse_lp_phylum <- transformAssay(tse_lp_phylum, assay.type = "relabundance", method = "clr")
+
+# Add scale features (taxa)
+tse_lp_phylum <- transformAssay(
+    tse_lp_phylum, assay.type = "clr", MARGIN = "rows", method = "standardize",
+    name = "clr-z")
+
+library(sechm)
+
+# Plot heatMap with sechm
+heatmap <- sechm(
+    tse_lp_phylum, assayName = "clr-z", features=rownames(tse_lp_phylum), do.scale = F, top_annotation="Supervivencia",
+    show_rownames = TRUE, show_colnames = TRUE, cluster_cols = T, cluster_rows = F,
+    row_names_gp = gpar(fontsize = 6), column_names_gp = gpar(fontsize = 8),
+    breaks = 1
+    )
+heatmap
+```
+
+
+
+
+# Community diversity
+## Adding alpha
+```{r}
+index <-  c("coverage_diversity", "fisher_diversity", "faith_diversity",
+    "gini_simpson_diversity", "inverse_simpson_diversity",
+    "log_modulo_skewness_diversity", "shannon_diversity", "absolute_dominance",
+    "dbp_dominance", "core_abundance_dominance", "gini_dominance", "dmn_dominance",
+    "relative_dominance", "simpson_lambda_dominance", "camargo_evenness",
+    "pielou_evenness", "simpson_evenness", "evar_evenness", "bulla_evenness",
+    "ace_richness", "chao1_richness", "hill_richness", "observed_richness")
+
+index <- index[!index %in% c("fisher_diversity", "ace_richness", "chao1_richness", "faith_diversity")]
+
+tse_lp <- addAlpha(
+    tse_lp, assay.type = "relabundance", index = index, name = index)
+```
+
+```{r, fig.height=10, fig.width=8}
+plots <- list()
+for (i in index){
+    p <- plotColData(
+        tse_lp,
+        i, 
+        "Supervivencia",
+        colour_by = "Supervivencia") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        labs(expression(Richness[Observed]))
+    
+    plots[[i]] <- p
+    
+}
+
+do.call(grid.arrange, c(plots, ncol = 4))
+```
+
+```{r}
+for (i in index){
+    test <- pairwise.wilcox.test(
+        tse_lp[[i]], tse_lp[["Supervivencia"]], p.adjust.method = "fdr")
+    
+    if (test$p.value[1,1] == "NaN"){
+        next
+    } else if (test$p.value[1,1] <= 0.05){
+        print(paste0(i, ": ", test$p.value[1,1]))
+    }
+}
+```
+
+```{r}
+tse_t1 <- addAlpha(
+    tse_t1, assay.type = "relabundance", index =  index, name = index)
+```
+
+```{r, fig.height=10, fig.width=8}
+plots <- list()
+for (i in index){
+    p <- plotColData(
+        tse_t1,
+        i, 
+        "Supervivencia",
+        colour_by = "Supervivencia") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        labs(expression(Richness[Observed]))
+    
+    plots[[i]] <- p
+    
+}
+
+do.call(grid.arrange, c(plots, ncol = 4))
+```
+
+```{r}
+tse_bilis <- addAlpha(
+    tse_bilis, assay.type = "relabundance", index =  index, name = index)
+```
+
+```{r, fig.height=10, fig.width=8}
+plots <- list()
+for (i in index){
+    p <- plotColData(
+        tse_bilis,
+        i, 
+        "Supervivencia",
+        colour_by = "Supervivencia") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        labs(expression(Richness[Observed]))
+    
+    plots[[i]] <- p
+    
+}
+
+do.call(grid.arrange, c(plots, ncol = 4))
+```
+
+```{r}
+tse_stool <- addAlpha(
+    tse_stool, assay.type = "relabundance", index =  index, name = index)
+
+```
+
+```{r, warning=FALSE}
+tse_higado_sra <- addAlpha(
+    tse_higado_sra, assay.type = "relabundance", index = index, name = index)
+```
+
+## Analisis comparativo alpha
+
+```{r}
+# Inicializar un data frame vacío
+alpha_diversity <- data.frame()
+
+for (i in index) {
+    # Crear los data frames individuales para cada grupo (LP, Stool, Oral)
+    diversidad_lp <- tse_lp[[i]] %>%
+        data.frame() %>%
+        setNames(i)
+    diversidad_lp$Sample <- "LP"
+    
+    diversidad_t1 <- tse_t1[[i]] %>%
+        data.frame() %>%
+        setNames(i)
+    diversidad_t1$Sample <- "T1"
+    
+    diversidad_stool <- tse_stool[[i]] %>%
+        data.frame() %>%
+        setNames(i)
+    diversidad_stool$Sample <- "Stool"
+    
+    diversidad_higado_sra <- tse_higado_sra[[i]] %>%
+        data.frame() %>%
+        setNames(i)
+    diversidad_higado_sra$Sample <- "Liver SRA"
+    
+    diversidad_bilis <- tse_bilis[[i]] %>%
+        data.frame() %>%
+        setNames(i)
+    diversidad_bilis$Sample <- "Bilis"
+    
+    # Combinar los tres data frames
+    alpha_diversity_2 <- rbind(diversidad_lp, diversidad_t1, 
+                               diversidad_stool, diversidad_higado_sra, diversidad_bilis)
+    
+    # Unir los índices con las columnas de alpha_diversity
+    if (ncol(alpha_diversity) == 0) {
+        alpha_diversity <- alpha_diversity_2
+    } else {
+        alpha_diversity <- cbind(alpha_diversity, alpha_diversity_2[[i]])
+        colnames(alpha_diversity)[ncol(alpha_diversity)] <- i
+    }
+}
+
+alpha_diversity$Sample <- factor(alpha_diversity$Sample, levels = c("LP", "T1", "Bilis", "Liver SRA", "Stool"))
+```
+
+```{r, fig.width=10, fig.height=10}
+plots <- list()
+for (i in index){
+    p <- ggplot(alpha_diversity, aes_string(x="Sample", y=i, fill = "Sample"))+
+        geom_boxplot(alpha = 0.5) + 
+        geom_jitter(size=0.1, alpha = 0.3) +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              axis.text.y = element_text(angle = 90, hjust = 1)) +
+        labs(y = i, x = "") +
+        stat_compare_means(comparisons = list(c("LP", "T1"), c("LP", "Stool"), c("LP", "Liver SRA"), c("LP", "Bilis")), label = "p.signif", ref.group = "LP")
+    
+    plots[[i]] <- p
+    
+}
+
+do.call(grid.arrange, c(plots, ncol = 4))
+```
+Aquí tienes una explicación detallada de cada uno de los índices de diversidad, dominancia, equidad (evenness), y riqueza (richness) mencionados:
+
+**Índices de Diversidad (Diversity)**
+Los índices de diversidad miden cuán diversas son las comunidades en función de la riqueza de especies y la distribución de sus abundancias.
+
+1. **`coverage_diversity`**: Un índice que ajusta la diversidad observada según la cobertura de muestreo, es decir, teniendo en cuenta cuántas especies han sido observadas en relación con la cobertura total estimada.
+
+4. **`gini_simpson_diversity`**: Similar al índice de Simpson, este índice mide la probabilidad de que dos individuos seleccionados al azar en la comunidad pertenezcan a especies diferentes. Se basa en la abundancia relativa de las especies.
+
+5. **`inverse_simpson_diversity`**: El índice de Simpson inverso es una transformación del índice de Simpson que amplifica los valores, haciendo que la diferencia entre las comunidades diversas y no diversas sea más clara. Cuanto mayor sea el valor, mayor es la diversidad.
+
+6. **`log_modulo_skewness_diversity`**: Mide la asimetría (skewness) de la distribución de las abundancias relativas de las especies. Un valor alto sugiere que pocas especies dominan en términos de abundancia.
+
+7. **`shannon_diversity`**: El índice de diversidad de Shannon es uno de los más comunes y mide tanto la riqueza de especies como la equidad de su distribución. Cuanto mayor sea el índice, mayor será la diversidad, ya que se consideran tanto el número de especies como su abundancia relativa.
+
+```{r, fig.height=8, fig.width=10}
+do.call(grid.arrange, c(plots[c(1, 3, 4, 5, 6)], ncol = 3))
+```
+
+**Índices de Dominancia (Dominance)**
+Estos índices miden cuán dominada está una comunidad por una o pocas especies.
+
+8. **`absolute_dominance`**: Mide la dominancia absoluta de una especie, es decir, la proporción que representa la especie más abundante sobre el total de la comunidad.
+
+9. **`dbp_dominance`**: Índice de dominancia de Berger-Parker (DBP), que mide la dominancia como la proporción de la especie más abundante en relación con el total de individuos. Cuanto mayor sea el valor, mayor será la dominancia.
+
+10. **`core_abundance_dominance`**: Mide la dominancia considerando las especies más abundantes en el núcleo de la comunidad, que pueden definirse como aquellas presentes en casi todas las muestras.
+
+11. **`gini_dominance`**: Basado en el coeficiente de Gini, mide la desigualdad en la distribución de las abundancias. Un valor alto indica una mayor desigualdad y, por lo tanto, una mayor dominancia de una o pocas especies.
+
+12. **`dmn_dominance`**: Un índice de dominancia general que mide cuán concentrada está la abundancia en pocas especies.
+
+13. **`relative_dominance`**: Mide la dominancia en relación con el tamaño total de la comunidad, considerando la proporción de la especie dominante respecto al total de especies.
+
+14. **`simpson_lambda_dominance`**: Índice de Simpson lambda, mide la probabilidad de que dos individuos seleccionados al azar pertenezcan a la misma especie. Cuanto mayor sea el índice, mayor será la dominancia.
+
+```{r, fig.height=8, fig.width=15}
+do.call(grid.arrange, c(plots[7:13], ncol=4))
+```
+
+
+**Índices de Equidad (Evenness)**
+Los índices de equidad miden cuán equitativamente están distribuidas las abundancias entre las especies presentes.
+
+15. **`camargo_evenness`**: Mide la equidad en función de la diferencia en las abundancias relativas de las especies. Cuanto mayor sea el valor, más equitativa será la comunidad.
+
+16. **`pielou_evenness`**: La equidad de Pielou es una medida que cuantifica cuán equitativamente están distribuidas las especies en una comunidad, basada en el índice de Shannon.
+
+17. **`simpson_evenness`**: Este índice mide la equidad usando el índice de Simpson, considerando tanto la riqueza de especies como la equidad de la distribución de abundancias.
+
+18. **`evar_evenness`**: Un índice de equidad que se basa en la variabilidad logarítmica de las abundancias de especies. Mide qué tan cerca están las abundancias relativas de todas las especies entre sí.
+
+19. **`bulla_evenness`**: Mide la equidad basada en la proporción de la comunidad que está igualmente distribuida entre las especies. Un valor alto sugiere una distribución más equitativa.
+
+```{r, fig.height=8, fig.width=10}
+do.call(grid.arrange, c(plots[14:18], ncol=3))
+```
+
+**Índices de Riqueza (Richness)**
+La riqueza mide el número de especies presentes en la comunidad, sin tener en cuenta las abundancias relativas.
+
+20. **`ace_richness`**: ACE (Abundance-based Coverage Estimator) es un estimador de la riqueza de especies que ajusta las especies observadas según la abundancia y la cobertura de muestreo.
+
+21. **`chao1_richness`**: El índice Chao1 estima la riqueza de especies en una comunidad al corregir por especies raras (especies con una sola observación). Este índice es útil cuando se sospecha que no todas las especies han sido observadas.
+
+22. **`hill_richness`**: La riqueza de Hill es una familia de índices que ajusta la riqueza de especies considerando tanto la riqueza observada como las abundancias relativas de las especies.
+
+23. **`observed_richness`**: Es simplemente el número de especies observadas en la muestra, sin ajustar por especies no observadas o cobertura de muestreo.
+
+```{r, fig.height=8, fig.width=10}
+do.call(grid.arrange, c(plots[19:20], ncol=2))
+```
+
+# Community dissimilarity
+
+## Multi-Dimensional Scaling (MDS) and non-metric MDS (NMDS)
+
+```{r}
+tse_lp <- addDivergence(
+    tse_lp,
+    assay.type = "relabundance",
+    reference = "median",
+    FUN = vegan::vegdist)
+```
+
+```{r}
+tse_lp <- runMDS(
+    tse_lp,
+    FUN = vegan::vegdist,
+    method = "bray",
+    assay.type = "counts",
+    name = "MDS_bray")
+
+# Create ggplot object
+p <- plotReducedDim(tse_lp, "MDS_bray", 
+                    colour_by = "Supervivencia"
+                    )
+colData(tse_lp)
+# Calculate explained variance
+e <- attr(reducedDim(tse_lp, "MDS_bray"), "eig")
+rel_eig <- e / sum(e[e > 0])
+
+# Add explained variance for each axis
+p <- p + labs(
+    x = paste("PCoA 1 (", round(100 * rel_eig[[1]], 1), "%", ")", sep = ""),
+    y = paste("PCoA 2 (", round(100 * rel_eig[[2]], 1), "%", ")", sep = "")
+    )
+
+p
+```
+
+```{r}
+tse_lp <- runNMDS(
+    tse_lp,
+    FUN = getDissimilarity,
+    method = "bray",
+    assay.type = "counts",
+    name = "NMDS_bray")
+
+# Run MDS on clr assay with Aitchison distances
+tse_lp <- runMDS(
+    tse_lp,
+    FUN = getDissimilarity,
+    method = "euclidean",
+    assay.type = "clr",
+    name = "MDS_aitchison")
+
+# Run NMDS on clr assay with Euclidean distances
+tse_lp <- runNMDS(
+    tse_lp,
+    FUN = getDissimilarity,
+    method = "euclidean",
+    assay.type = "clr",
+    name = "NMDS_aitchison")
+
+```
+
+```{r}
+plots <- lapply(
+    c("MDS_bray", "MDS_aitchison", "NMDS_bray", "NMDS_aitchison"),
+    plotReducedDim,
+    object = tse_lp,
+    colour_by = "Supervivencia"
+    )
+
+# Generate multi-panel plot
+wrap_plots(plots) +
+    plot_layout(guides = "collect")
+```
+
+## PCA
+
+```{r}
+df_scaled <- data.frame(t(assay(tse_lp, "relabundance")))
+
+
+pca_result_df <- prcomp(df_scaled)
+
+var_exp <- pca_result_df$sdev^2
+prop_var_exp <- var_exp / sum(var_exp)
+cum_var_exp <- cumsum(prop_var_exp)
+
+df_var_exp <- data.frame(Comp = 1:length(prop_var_exp), VarExp = prop_var_exp)
+df_cum_var_exp <- data.frame(Comp = 1:length(cum_var_exp), CumVarExp = cum_var_exp)
+
+# Scree plot con los datos no escalados
+ggplot(df_var_exp[1:10,], aes(x = Comp, y = VarExp)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_line(aes(group = 1), color = "blue") +
+  geom_point(color = "blue") +
+  theme_minimal() +
+  labs(x = "Principal components", y = "Variance", title = "Scree Plots") +
+  ylim(c(0,1)) +
+  geom_line(data = df_cum_var_exp[1:10,], aes(x = Comp, y = CumVarExp), color="#8B1A1A") +
+  geom_point(data = df_cum_var_exp[1:10,], aes(x = Comp, y = CumVarExp), color = "red") +
+  geom_bar(data = df_cum_var_exp[1:10,], aes(x = Comp, y = CumVarExp), stat = "identity", fill = "red", alpha= 0.25) +
+  annotate("text", x = 2, y = 0.85, label = "Cumulative Scree \n Plot", color = "#8B1A1A", size = 4) +
+  geom_text(data = df_cum_var_exp[1:10,], aes(x=Comp, y = CumVarExp +0.04, label = round(CumVarExp, 2)))
+```
+
+```{r}
+pca <- as.data.frame(pca_result_df$x, stringsAsFactors=F)
+pca <- cbind(samples_metadata_LP[,], pca[,1:20])
+
+
+ggplot(pca, aes(x = PC1, y = PC2, color = Supervivencia)) +
+    geom_point() +
+    xlab("PC 1 ") +
+    ylab("PC 2")+
+    theme_minimal()
+
+```
+
+```{r}
+
+library(factoextra)
+
+fviz_pca_ind(pca_result_df,
+                geom.ind = c("point"), 
+                geom_var = c("arrow", "text"), 
+                col.var = "cos2",
+                #col.ind = "cos2",
+                #gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+                repel = F, addEllipses = T, habillage = colData(tse_lp)$Exitus
+                )
+```
+
+## tSNE
+
+```{r}
+df_scaled <- data.frame(t(assay(tse_lp, "relabundance")))
+
+library(Rtsne)
+set.seed(1234)
+tsne <- Rtsne(df_scaled, dims = 2, theta = 0.0, perplexity = 30)
+
+tsne.data <- as.data.frame(tsne$Y)
+tsne.data$nombre_muestra <- samples_metadata_LP$nombre_muestra
+tsne.data.covs <- merge(tsne.data, samples_metadata_LP, by = "nombre_muestra")
+
+ggplot(tsne.data.covs, aes(x = V1, y = V2, color = Supervivencia)) +
+    geom_point() +
+    theme_minimal()
+```
+
+## UMAP
+
+```{r}
+df_scaled <- data.frame(t(assay(tse_lp, "relabundance")))
+
+library(umap)
+local.config <- umap.defaults
+set.seed(432)
+df_umap <- umap(df_scaled, random_stage=123)
+
+umap.data <- as.data.frame(df_umap$layout)
+umap.data$nombre_muestra <- samples_metadata_LP$nombre_muestra
+umap.data.covs <- merge(umap.data, samples_metadata_LP, by = "nombre_muestra")
+
+ggplot(umap.data.covs, aes(x=V1, y=V2, color = Exitus)) +  
+  geom_point() +
+  xlab("UMAP1") + ylab("UMAP2") +
+  ggtitle("UMAP") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+```
+
+
+
+
+
+
+```{r}
+length(rownames(assay(tse_lp)))
+length(rownames(assay(tse_higado_sra)))
+
+# Calculate the list of sequencing depths across samples
+sequencing_depths <- colSums(assay(tse_lp))
+# Calculate variation between highest and lowest sequencing depth
+depth_variation <- max(sequencing_depths)/min(sequencing_depths)
+depth_variation
+
+# Let us see what happens when we operate with ntop highest variance features
+ntop <- nrow(tse_lp)
+
+# Calculate the standard deviations for each row
+row_sds <- rowSds(assay(tse_lp, "counts"))
+
+# Get the indices of the top 5 rows with the highest standard deviations
+top_indices <- order(row_sds, decreasing = TRUE)[1:ntop]
+
+# Subset the tse object based on the top indices
+tse_sub <- tse_lp[top_indices, ]
+
+# Centered log-ratio transformation to properly apply Aitchison distance
+
+tse_sub <- transformAssay(
+  tse_sub,
+  assay.type = "counts",
+  method = "clr",
+  pseudocount = 1
+  )
+
+# Run MDS on clr assay with Aitchison distance
+tse_sub <- runMDS(
+  tse_sub,
+  FUN = getDissimilarity,
+  method = "euclidean",
+  assay.type = "clr",
+  name = "MDS_aitchison"
+  )
+
+# Define custom transformation function..
+clr <- function (x) {
+  vegan::decostand(x, method="clr", pseudocount=1)
+}
+
+# Run transformation after rarefactions before calculating the beta diversity..
+tse_sub <- runMDS(tse_sub,
+  assay.type = "counts",
+  ntop = nrow(tse_lp),
+  FUN = getDissimilarity,
+  method = "euclidean",
+  niter = 10, # Number of iterations
+  sample = min(colSums(assay(tse_sub, "counts"))), # Rarefaction depth
+  transf = clr, # Applied transformation
+  replace = TRUE,
+  name = "MDS_aitchison_rarefied"
+  )
+
+# Generate plots for non-rarefied and rarefied Bray-Curtis distances scaled by
+# MDS
+plots <- lapply(
+  c("MDS_aitchison", "MDS_aitchison_rarefied"),
+  plotReducedDim,
+  object = tse_sub,colour_by = "Supervivencia")
+
+# Generate multi-panel plot
+wrap_plots(plots) +
+  plot_layout(guides = "collect")
+
+```
+
+## RDA
+
+```{r}
+# Extraer las variables que tienen más de un nivel
+variables <- colData(tse_lp)
+variables <- variables[, sapply(variables, function(x) length(unique(x)) > 1)]  # Filtrar variables con más de un nivel
+
+# Perform RDA
+tse_lp <- addRDA(
+    tse_lp,
+    assay.type = "relabundance",
+    formula = as.formula(paste("data ~", paste(colnames(variables), collapse = " + "))), 
+    na.action = na.exclude)
+
+
+# Store results of PE# Store results of PE# Store results of PERMANOVA test
+rda_info <- attr(reducedDim(tse_lp, "RDA"), "significance")
+
+```
+
+
+```{r}
+
+tse <- agglomerateByRank(tse_lp, "Class")
+
+set.seed(174923)
+tse<- addCluster(
+    tse,
+    assay.type = "counts",
+    by = "cols",
+    HclustParam(method = "ward.D2", dist.fun = getDissimilarity, metric = "bray"),
+    full = TRUE,
+    clust.col = "hclust")
+
+table(tse$hclust)
+
+library(dendextend)
+
+# Get hclust data from metadata
+hclust_data <- metadata(tse)$clusters$hclust
+
+# Get the dendrogram object
+dendro <- as.dendrogram(hclust_data)
+k <- length(unique(tse$hclust))
+
+# Color the branches by clusters
+cols <- scales::hue_pal()(k)
+
+# Order the colors to be equivalent to the factor levels
+cols <- cols[c(1,4,5,3,2,6)]
+dend <- color_branches(dendro, k = k, col = unlist(cols))
+
+# Label the samples by their dominant taxon
+tse <- addDominant(tse)
+labels(dend) <- tse$dominant_taxa
+dend <- color_labels(dend, k = k, col = unlist(cols))
+
+# Adjust frame for the figure
+par(mar=c(9, 3, 0.5, 0.5))
+# Plot dendrogram
+dend |> set("labels_cex", 0.8) |> plot()
+
+plotReducedDim(
+    tse, "MDS_bray", colour_by = "hclust",
+    theme_size = 13, point_size = 4) +
+    labs(color = "HClust", title = "Hclust") + theme_minimal()
+```
+
+```{r}
+set.seed(3221)
+res <- getNMF(tse, k = 4)
+
+# Obtain the relative abundance of ES in each sample
+wrel <- t(apply(res, 1, function (x) {x/sum(x)}))
+
+# Define the community type of a sample with the highest relative abundance
+tse$NMFcomponent <- as.factor(apply(wrel, 1, which.max))
+table(tse$NMFcomponent)
+
+plotReducedDim(
+    tse, "MDS_bray", colour_by = "NMFcomponent",
+    point_size = 3, theme_size = 13) +
+
+    labs(color = "NMFcomponent", title = "NMF") + theme_minimal()
+```
+
+```{r}
+library(ComplexHeatmap)
+
+# Agglomerate to Genus level
+
+# Apply clr and scale data
+tse <-  transformAssay(
+    tse, assay.type = "clr", method = "standardize", MARGIN = "rows")
+# Gets the assay table
+mat <- assay(tse, "standardize")
+
+library(ape)
+library(ggtree)
+
+# Hierarchical clustering
+tse <- addCluster(
+    tse, assay.type = "standardize", HclustParam(method = "complete"),
+    full = TRUE)
+taxa_hclust <- metadata(tse)[["clusters"]][["hclust"]]
+# Creates a phylogenetic tree
+taxa_tree <- as.phylo(taxa_hclust)
+ggtree(taxa_tree)
+
+tse <- addCluster(
+    tse, assay.type = "standardize",
+    HclustParam(method = "complete", cut.fun = cutree, k = 8))
+
+library(factoextra)
+library(NbClust)
+library(patchwork)
+
+# Elbow method
+p1 <- fviz_nbclust(assay(tse, "standardize"), kmeans, method = "wss")
+# Silhouette method
+p2 <- fviz_nbclust(assay(tse, "standardize"), kmeans, method = "silhouette")
+
+p1 + p2
+
+tse <- addCluster(
+    tse, assay.type = "standardize", by = "cols",
+    KmeansParam(centers = 8))
+
+# Order the data based on clusters
+tse <- tse[
+    order(rowData(tse)[["clusters"]]),
+    order(colData(tse)[["clusters"]])]
+# Get data for plotting
+mat <- assay(tse, "standardize")
+taxa_clusters <- rowData(tse)[, "clusters", drop = FALSE] |>
+  as.data.frame()
+sample_data <- colData(tse)[, c("clusters", "Supervivencia"), drop = FALSE] |>
+  as.data.frame()
+colnames(sample_data) <- c("clusters_col", "Supervivencia")
+
+# Determines the scaling of colors
+# Scale colors
+breaks <- seq(
+    -ceiling(max(abs(mat))), ceiling(max(abs(mat))),
+    length.out = ifelse( max(abs(mat))>5, 2*ceiling(max(abs(mat))), 10 ) )
+colors <- colorRampPalette(c("darkblue", "blue", "white", "red", "darkred"))(length(breaks)-1)
+
+pheatmap(
+    mat, annotation_row = taxa_clusters,
+    annotation_col = sample_data,
+    cluster_cols = T, cluster_rows = T,
+    breaks = breaks,
+    color = colors)
+```
+
+
+

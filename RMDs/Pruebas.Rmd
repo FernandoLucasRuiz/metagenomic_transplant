@@ -1,0 +1,72 @@
+```{r}
+
+abundancias_relativas_totales <- function(lista_objetos_tse, ranking, top = 10){
+    
+    if (is_null(names(lista_objetos_tse)) == T){
+        stop("Pon nombres en la lista de TSEs")
+        
+    }
+    
+    abundancias_relativas <- data.frame(
+        Taxon = character(),               
+        Relative_Abundance = numeric(),      
+        TSE = character())
+    
+    for (i in 1:length(lista_objetos_tse)){
+        tse_ranking <- agglomerateByRank(lista_objetos_tse[[i]], rank = ranking)
+        
+        # Verificar si el assay "counts" está disponible
+        if ("counts" %in% assayNames(tse_ranking)) {
+            row_sums <- assay(tse_ranking, "counts") %>%
+                as.data.frame() %>%
+                rowSums()
+            
+        } else if ("relative_abundance" %in% assayNames(tse_ranking)) {
+            row_sums <- assay(tse_ranking, "relative_abundance") %>%
+                as.data.frame() %>%
+                rowSums()
+            
+        } else {
+            stop("Ni 'counts' ni 'relative_abundance' están disponibles en este objeto.")
+            
+        }
+        
+        total_sum <- sum(row_sums)
+        
+        relative_abundance <- row_sums / total_sum
+        
+        data <- data.frame(
+            Taxon = rownames(assay(tse_ranking)),
+            Relative_Abundance = relative_abundance
+        )
+        
+        data$TSE <- names(lista_objetos_tse)[i]
+        
+        rownames(data) <- NULL
+        
+        if (nrow(abundancias_relativas) == 0){
+            
+            abundancias_relativas <- data
+            
+        } else {
+            abundancias_relativas <- rbind(abundancias_relativas, data)
+            
+        }
+        
+    }
+    
+    if (covariates == T) {
+        
+        
+        
+    }
+    
+    
+    return(abundancias_relativas)
+    
+}
+
+abundancias_relativas_totales(list(tse_lp = tse_lp))
+
+```
+

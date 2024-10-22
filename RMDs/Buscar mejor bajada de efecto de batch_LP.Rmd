@@ -1,0 +1,365 @@
+---
+title: "Buscar mejor bajada de efecto de batch"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, message=FALSE}
+load("../Rdatas/lectura_conteos.RData")
+load("../Rdatas/covariables_limpieza.RData")
+source("Librerias.R")
+source("utils.R")
+```
+
+# Preparar datos
+
+```{r}
+# vamos a colapsar las columnas de taxonomia para mia
+taxonomia_combinada <- todas_muestras %>%
+    unite("Combined", Phylum:Species, sep = "_", remove = F)
+
+# buscamos los unique para ponerle IDs aleatorios
+taxonos <- unique(taxonomia_combinada$Combined)
+set.seed(123)  # Para reproducibilidad
+random_ids <- replicate(length(taxonos), paste(sample(c(letters, 0:9), 8, replace = TRUE), collapse = ""))
+
+taxonos_ids <- data.frame(cbind(taxonos, random_ids))
+
+# juntar taxonos_ids a todas_muestras 
+todas_muestras_taxonomia <- dplyr::left_join(taxonomia_combinada, taxonos_ids, by = c("Combined" = "taxonos"))
+```
+
+```{r}
+# Crear tabla de abundancia según MIA
+## voy a sumar aquellos counts que tengan random_ids y codigo iguales ya que provienen de los "slash calls"
+abundance_table_LP <- todas_muestras_taxonomia %>%
+    dplyr::filter(tipo_muestra == "LP") %>%
+    group_by(random_ids, codigo) %>%
+    summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = codigo, values_from = Count) %>%
+    mutate_all(~replace_na(., 0))
+
+abundance_table_LP <- as.data.frame(abundance_table_LP)
+rownames(abundance_table_LP) <- abundance_table_LP$random_ids
+abundance_table_LP <- abundance_table_LP %>% select(-random_ids)
+
+# Crear rowdata(tax)
+tax_LP <- todas_muestras_taxonomia %>%
+    dplyr::filter(tipo_muestra == "LP") %>%
+    dplyr::select(Phylum:Species, random_ids) %>%
+    as.data.frame()
+
+tax_LP <- tax_LP[!duplicated(tax_LP$random_ids), ]
+
+rownames(tax_LP) <- tax_LP$random_ids
+tax_LP <- dplyr::select(tax_LP, -random_ids)
+
+# Creas colData (samples). Esto incluye la metadata
+samples_LP <- todas_muestras_taxonomia %>%
+    dplyr::filter(tipo_muestra == "LP") %>%
+    dplyr::select(codigo, nombre_muestra, tipo_muestra, Batch) %>%
+    as.data.frame()
+
+samples_LP <- samples_LP[!duplicated(samples_LP$codigo), ]
+
+samples_metadata_LP <- dplyr::left_join(samples_LP, covs, by= "nombre_muestra" )
+
+rownames(samples_metadata_LP) <- samples_metadata_LP$codigo
+samples_metadata_LP <- dplyr::select(samples_metadata_LP, -codigo)
+
+
+```
+
+```{r}
+# taxa tiene que tener la taxonomia en las columnas y los samples en las filas
+taxa_LP <- data.frame(t(abundance_table_LP))
+
+# Para sacar la lista de los batch primero hay que ordenar los samples en el samples_metadata
+
+## Asegurarse de que ambos dataframes tengan los mismos rownames
+common_rows <- intersect(rownames(taxa_LP), rownames(samples_metadata_LP))
+
+taxa_LP <- taxa_LP[common_rows, ]
+samples_metadata_LP <- samples_metadata_LP[match(rownames(taxa_LP), rownames(samples_metadata_LP)), ]
+
+covar_lp <- samples_metadata_LP 
+
+taxa_lp <- taxa_LP[rownames(taxa_LP) %in% rownames(covar_lp), ]
+
+batchid_lp <- as.factor(covar_lp$Batch)
+
+covar_lp <- covar_lp %>%
+    dplyr::select(-c("nombre_muestra", "Batch", "tipo_muestra"))
+```
+
+## Combinaciones
+
+```{r}
+# Definir las variables
+variables <- c("Supervivencia", "MEAF_score", "AR", "AHT", "Biliary_complications")
+
+# Generar todas las combinaciones posibles de 2 o más variables
+combinaciones <- list()
+
+for (i in 2:length(variables)) {  # Empezamos desde combinaciones de 2
+  combinaciones[[i-1]] <- combn(variables, i, simplify = FALSE)
+}
+
+# Convertir a una sola lista de combinaciones
+combinaciones_totales <- unlist(combinaciones, recursive = FALSE)
+
+# Filtrar combinaciones que incluyan "MEAF_score"
+combinaciones_con_meaf <- Filter(function(x) "MEAF_score" %in% x, combinaciones_totales)
+
+# Convertir cada combinación en una cadena separada por comas
+combinaciones_cadenas <- sapply(combinaciones_con_meaf, function(x) paste(x, collapse = " y "))
+```
+
+# Programa
+
+```{r, eval=FALSE}
+permanovas <- data.frame(matrix(ncol = 4, nrow = 0))
+colnames(permanovas) <- c("Batch  Bray-Curtis", "Key  Bray-Curtis", "Batch Aitchinson", "Key Aitchinson")
+
+plots <- list()
+
+for (i in levels(batchid_lp)){
+    print(paste0("Analizando run = ", i))
+    
+    for (j in 1:length(combinaciones_con_meaf)){
+        print(paste0("        Combinación: ", j, " ", combinaciones_cadenas[[j]]))
+        tryCatch({
+            covariables <- covar_lp %>% 
+                dplyr::select(combinaciones_con_meaf[[j]])
+            
+            
+            taxa_coregida <- ConQuR(tax_tab=taxa_lp, 
+                                batchid=batchid_lp, 
+                                covariates=covariables, 
+                                batch_ref=i)
+            
+            saveRDS(taxa_coregida, paste0("../RDSs/taxa_corrected_", combinaciones_cadenas[j] ,"_", i, "_lp.RDS"))
+            
+            print(paste0("     Taxa corregida"))
+            
+        }, error = function(e) {
+            # Manejo del error, imprime un mensaje y continúa
+            print(paste("Error en el RUN = ", i, ":", e$message))
+        })
+    }
+}
+```
+
+```{r}
+# Especifica el directorio donde tienes guardados los archivos .RDS
+directorio <- "../RDSs"
+
+# Obtener una lista de archivos .RDS en el directorio
+archivos_rds <- list.files(path = directorio, pattern = "\\.RDS$", full.names = TRUE)
+
+# Crear una lista vacía para almacenar los datos
+lista_de_datos <- list()
+
+# Leer cada archivo .RDS y almacenarlo en la lista
+for (archivo in archivos_rds) {
+  # Usar el nombre del archivo sin extensión como nombre del elemento de la lista
+  nombre <- tools::file_path_sans_ext(basename(archivo))
+  lista_de_datos[[nombre]] <- readRDS(file = archivo)
+ 
+}
+```
+
+# PCoa
+## R1
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 1", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+        }
+    }
+}
+```
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 1", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+        }
+    }
+}
+```
+
+## R2
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 2", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+        }
+    }
+}
+```
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 2", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+        }
+    }
+}
+```
+
+## R3
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 3", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+        }
+    }
+}
+```
+
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(4, 4))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+
+for (i in names(lista_de_datos)){
+    if (grepl(pattern = "MEAF_score", i)){
+        if (grepl(pattern = "RUN 3", i)){
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+        }
+    }
+}
+```
+
+# Permanovas 
+
+```{r}
+permanovas <- data.frame(matrix(ncol = 4, nrow = 0))
+colnames(permanovas) <- c("Batch Bray-Curtis", "Key Bray-Curtis", "Batch Aitchison", "Key Aitchison")
+
+for (i in names(lista_de_datos)){
+    
+    if (grepl(pattern = "MEAF_score", i)){
+        
+        for (j in levels(batchid_lp)){
+            
+            if (grepl(pattern = j, i)){
+                patron <- "\\by\\s+([a-zA-Z_]+|[a-zA-Z_]+_[a-zA-Z_]+)"
+                coincidencias <- regmatches(i, gregexpr(patron, i, perl = TRUE))
+                palabras_seguidas_de_y <- unlist(lapply(coincidencias, function(x) gsub("y ", "", x)))
+                palabras_seguidas_de_y <- gsub("_RUN", "", palabras_seguidas_de_y)
+                
+                if (grepl("Supervivencia", i)){
+                    palabras_seguidas_de_y <- c(palabras_seguidas_de_y, "Supervivencia")
+                }
+                
+                if (!("MEAF_score" %in% palabras_seguidas_de_y)){
+                    palabras_seguidas_de_y <- c("MEAF_score", palabras_seguidas_de_y)
+                }
+                
+                permanova <- PERMANOVA_R2(TAX= lista_de_datos[[i]], 
+                                          batchid=batchid_lp,
+                                          covariates=covar_lp[, palabras_seguidas_de_y], 
+                                          key_index=1)
+                
+                nombre_base <- paste0(" ", paste(palabras_seguidas_de_y, collapse = ", "), " ", j)
+                
+                print(paste0("Permanova hecha de ", paste(palabras_seguidas_de_y, collapse = ", "), " ", j))
+                
+                permanovas[nombre_base,1] = permanova$tab_count[1,1]
+                permanovas[nombre_base,2] = permanova$tab_count[2,1]
+                permanovas[nombre_base,3] = permanova$tab_rel[1,1]
+                permanovas[nombre_base,4] = permanova$tab_rel[2,1]
+            }
+        }
+    }
+}
+
+```
+
+```{r}
+reactable::reactable(round(permanovas, 3)*100)
+```
+
+# Automatica
+
+```{r, eval=FALSE}
+covar_salida <- covar_lp %>% 
+    dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications) 
+
+result_tuned <- Tune_ConQuR(tax_tab=taxa_lp,
+                           batchid=batchid_lp,
+                           covariates=covar_salida,
+                           batch_ref_pool=c("RUN 1", "RUN 2", "RUN 3"),
+                           logistic_lasso_pool=c(T, F),
+                           quantile_type_pool=c("standard", "lasso"),
+                           simple_match_pool=c(T, F),
+                           lambda_quantile_pool=c(NA, "2p/n", "2p/logn"),
+                           interplt_pool=c(T, F),
+                           frequencyL=0,
+                           frequencyU=1,
+                           num_core = num_cores-2)
+```
+
+```{r, fig.width=10, fig.height=8}
+result_tuned <- readRDS("../RDSs/result_tuned.RDS")
+
+covar_salida <- covar_lp %>% 
+    dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications)
+
+permanova_original <- PERMANOVA_R2(taxa_lp, batchid = batchid_lp, covariates = covar_salida)
+permanova_tunned <- PERMANOVA_R2(result_tuned$tax_final, batchid = batchid_lp, covariates = covar_salida)
+
+par(mfrow = c(1,2))
+Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0("Taxa original", " Bray-Curtis")) 
+
+Plot_PCoA(TAX=result_tuned$tax_final, factor=batchid_lp, main=paste0("Taxa tunned", " Bray-Curtis"))
+
+```
+
+# Guardar
+```{r}
+save.image("../Rdatas/Efecto batch.RData")
+```
+
+

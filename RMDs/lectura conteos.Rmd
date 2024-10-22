@@ -1,0 +1,250 @@
+---
+title: "Lectura conteos"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, message=FALSE}
+source("Librerias.R")
+```
+
+# Tejidos y Liquidos
+
+```{r}
+# Directorio donde están los archivos Excel
+directorio <- "../exports_LP_T1_T3//"
+
+# Listar todos los archivos que coinciden con el patrón
+archivos <- list.files(path = directorio, pattern = ".*\\_consensus.txt$", full.names = TRUE)
+
+todas_muestras <- data.frame()
+
+# Leer y asignar cada archivo a una variable con el nombre correspondiente
+for (archivo in archivos) {
+  nombre_base <- sub("exports//", "", basename(archivo))
+  nombre_base <- sub("\\_consensus.txt$", "", nombre_base)
+  nombre_base <- sub("^.*?_", "", nombre_base)
+  nombre_base <- sub("_[^_]*$", "", nombre_base)
+  
+  # Leer el archivo Excel
+  datos <- read.delim(archivo)
+  
+  # seleccionar las columnas 
+  datos <- dplyr::select(datos, c("Phylum", "Class", "Order", "Family", "Genus", "Species", "Count"))
+  
+  # Poner nombre de muestra
+  datos <- mutate(datos, codigo = nombre_base)
+  
+  # ir añadiendo a un data.frame
+  todas_muestras <- rbind(todas_muestras, datos)
+  
+}
+
+# Aplicar trimws a todas las columnas de tipo carácter para quitar el espacio del principio
+todas_muestras[] <- lapply(todas_muestras, function(x) if(is.character(x)) trimws(x, which = "left") else x)
+```
+
+```{r}
+# Cambiar por ""
+todas_muestras[] <- lapply(todas_muestras, function(x) if(is.character(x)) gsub("\\(family level ID only\\)", "", x) else x)
+
+todas_muestras[] <- lapply(todas_muestras, function(x) if(is.character(x)) gsub("\\(slash calls\\)", "", x) else x)
+
+todas_muestras[] <- lapply(todas_muestras, function(x) if(is.character(x)) gsub("\\(genus level ID only\\)", "", x) else x)
+
+```
+
+```{r}
+# poner el nombre de la muestra
+todas_muestras <- todas_muestras %>%
+    mutate(nombre_muestra = case_when(
+        grepl("^[0-9]+_Alb", codigo) ~ codigo,  # Si el código empieza con un número seguido de "_Alb"
+        grepl("^P[0-9]+", codigo) ~ paste0("DAMPS-P", sub("P([0-9]+).*", "\\1", codigo)),  # Si el código empieza con "P" seguido de uno o más números
+  ))
+```
+
+```{r}
+todas_muestras <- todas_muestras %>%
+    mutate(tipo_muestra = case_when(
+        grepl("^[0-9]+_Alb", codigo) ~ "LP",  # Si el código empieza con un número seguido de "_Alb", asignar "LP"
+        grepl("^P[0-9]+_LP", codigo) ~ "LP",  # Si el código empieza con "P" seguido de uno o más números y "_LP", asignar "LP"
+        grepl("^P[0-9]+T1", codigo) ~ "T1",   # Si el código empieza con "P" seguido de uno o más números y "T1", asignar "T1"
+        grepl("^P[0-9]+T3", codigo) ~ "T3",   # Si el código empieza con "P" seguido de uno o más números y "T3", asignar "T3"
+  ))
+
+todas_muestras$tipo_muestra <- as.factor(todas_muestras$tipo_muestra)
+
+unique(todas_muestras$tipo_muestra)
+```
+
+## Añadir batch
+
+```{r}
+batch <- read_excel("../Muestras Microbiota líquidos.xlsx", sheet = 2)
+
+todas_muestras <- dplyr::left_join(todas_muestras, batch, by = "codigo")
+```
+
+```{r}
+# quitar la muestra 18 porque murió en quirófano
+todas_muestras <- todas_muestras %>%
+    dplyr::filter(nombre_muestra != "18_Alb")
+
+todas_muestras[todas_muestras$Batch == "PGM 141", ] <- "PGM 140"
+unique(todas_muestras$Batch)
+
+```
+
+## Juntar Batches por dias
+
+```{r}
+todas_muestras$Batch <- ifelse(todas_muestras$Batch %in% c("RUN 46", "RUN 45", "PGM 140"), "RUN 3", todas_muestras$Batch)
+
+todas_muestras$Batch <- ifelse(todas_muestras$Batch %in% c("RUN 39"), "RUN 2", todas_muestras$Batch)
+
+todas_muestras$Batch <- ifelse(todas_muestras$Batch %in% c("RUN 34", "PGM 135"), "RUN 1", todas_muestras$Batch)
+
+todas_muestras$Batch <- ifelse(todas_muestras$Batch %in% c("RUN 48"), "RUN 4", todas_muestras$Batch)
+```
+
+```{r}
+otus_lp_t1_t3 <- todas_muestras 
+```
+
+# Bilis
+
+```{r}
+# Directorio donde están los archivos Excel
+directorio <- "../exports_bilis/"
+
+# Listar todos los archivos que coinciden con el patrón
+archivos <- list.files(path = directorio, pattern = ".*\\_consensus.txt$", full.names = TRUE)
+
+otus_bilis <- data.frame()
+
+# Leer y asignar cada archivo a una variable con el nombre correspondiente
+for (archivo in archivos) {
+  nombre_base <- sub("exports//", "", basename(archivo))
+  nombre_base <- sub("\\_consensus.txt$", "", nombre_base)
+  nombre_base <- sub("^.*?_", "", nombre_base)
+  nombre_base <- sub("_[^_]*$", "", nombre_base)
+  
+  # Leer el archivo Excel
+  datos <- read.delim(archivo)
+  
+  # seleccionar las columnas 
+  datos <- dplyr::select(datos, c("Phylum", "Class", "Order", "Family", "Genus", "Species", "Count"))
+  
+  # Poner nombre de muestra
+  datos <- mutate(datos, codigo = nombre_base)
+  
+  # ir añadiendo a un data.frame
+  otus_bilis <- rbind(otus_bilis, datos)
+  
+}
+
+# Aplicar trimws a todas las columnas de tipo carácter para quitar el espacio del principio
+otus_bilis[] <- lapply(otus_bilis, function(x) if(is.character(x)) trimws(x, which = "left") else x)
+```
+
+```{r}
+# Cambiar por NAs
+otus_bilis[] <- lapply(otus_bilis, function(x) if(is.character(x)) gsub("\\(family level ID only\\)", "", x) else x)
+
+otus_bilis[] <- lapply(otus_bilis, function(x) if(is.character(x)) gsub("\\(slash calls\\)", "", x) else x)
+
+otus_bilis[] <- lapply(otus_bilis, function(x) if(is.character(x)) gsub("\\(genus level ID only\\)", "", x) else x)
+
+```
+
+```{r}
+# poner el nombre de la muestra
+otus_bilis <- otus_bilis %>%
+    mutate(nombre_muestra = case_when(
+        grepl("^P[0-9]+", codigo) ~ paste0("DAMPS-P", sub("P([0-9]+).*", "\\1", codigo)),  # Si el código empieza con "P" seguido de uno o más números
+  ))
+```
+
+
+```{r}
+otus_bilis$tipo_muestra <- "Bilis"
+```
+
+# Contaminantes
+
+```{r}
+# Directorio donde están los archivos Excel
+directorio <- "../exports_negative_controls/"
+
+# Listar todos los archivos que coinciden con el patrón
+archivos <- list.files(path = directorio, pattern = ".*\\_consensus.txt$", full.names = TRUE)
+
+otus_negative_controls <- data.frame()
+
+# Leer y asignar cada archivo a una variable con el nombre correspondiente
+for (archivo in archivos) {
+  nombre_base <- sub("exports//", "", basename(archivo))
+  nombre_base <- sub("\\_consensus.txt$", "", nombre_base)
+  nombre_base <- sub("^.*?_", "", nombre_base)
+  nombre_base <- sub("_[^_]*$", "", nombre_base)
+  
+  # Leer el archivo Excel
+  datos <- read.delim(archivo)
+  
+  # seleccionar las columnas 
+  datos <- dplyr::select(datos, c("Phylum", "Class", "Order", "Family", "Genus", "Species", "Count"))
+  
+  # Poner nombre de muestra
+  datos <- mutate(datos, codigo = nombre_base)
+  
+  # ir añadiendo a un data.frame
+  otus_negative_controls <- rbind(otus_negative_controls, datos)
+  
+}
+
+# Aplicar trimws a todas las columnas de tipo carácter para quitar el espacio del principio
+otus_negative_controls[] <- lapply(otus_negative_controls, function(x) if(is.character(x)) trimws(x, which = "left") else x)
+```
+
+```{r}
+# Cambiar por NAs
+otus_negative_controls[] <- lapply(otus_negative_controls, function(x) if(is.character(x)) gsub("\\(family level ID only\\)", "", x) else x)
+
+otus_negative_controls[] <- lapply(otus_negative_controls, function(x) if(is.character(x)) gsub("\\(slash calls\\)", "", x) else x)
+
+otus_negative_controls[] <- lapply(otus_negative_controls, function(x) if(is.character(x)) gsub("\\(genus level ID only\\)", "", x) else x)
+
+```
+
+```{r}
+table(otus_negative_controls$codigo)
+```
+
+```{r}
+otus_negative_controls$tipo_muestra <- "Negative_control"
+```
+
+# Guardar datos
+
+```{r}
+save.image("../Rdatas/lectura_conteos.RData")
+```
+
+
+

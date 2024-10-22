@@ -1,0 +1,64 @@
+---
+title: "curatedMetagenomicData"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r}
+library(dplyr)
+library(DT)
+library(stringr)
+library(mia)
+library(scater)
+library(vegan)
+```
+
+
+# Phylum
+## stool
+
+```{r, message=FALSE}
+sm <- curatedMetagenomicData::sampleMetadata
+tse_stool <- sm %>%
+    filter(body_site == "stool",
+           study_condition == "control" & disease == "healthy",
+           age >=18,
+           non_westernized == "no",
+           pregnant == "no",
+           age_category == "adult") %>%
+    select(where(~ !all(is.na(.x)))) %>%
+    curatedMetagenomicData::returnSamples("relative_abundance", rownames = "short", counts = T)
+```
+
+```{r}
+rowData(tse_stool)$superkingdom <- NULL
+colnames(rowData(tse_stool)) <- c("Phylum", "Class", "Order", "Family", "Genus", "Species")
+```
+
+```{r}
+
+tse_stool <- transformAssay(tse_stool, assay.type = "relative_abundance", method = "relabundance")
+tse_stool <- transformAssay(tse_stool, assay.type = "relative_abundance", method = "standardize")
+tse_stool <- transformAssay(tse_stool, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+```
+
+```{r}
+save.image("../Rdatas/curatedMetagenomicData.RData")
+```
+

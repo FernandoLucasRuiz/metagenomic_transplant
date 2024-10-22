@@ -1,0 +1,639 @@
+---
+title: "Covariables limpieza"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, message=FALSE}
+load("../Rdatas/lectura_conteos.RData")
+source("Librerias.R")
+```
+
+
+# Lectura datos
+
+```{r}
+# Cogemos covariables
+covs <- read_excel("../TABLA LIQUIDOS TH_microbiota.xlsx", sheet = 2)
+
+# quitar muestra DAMPS-P39 porque no se analizó
+covs <- covs %>% 
+    dplyr::filter(nombre_muestra != "DAMPS-P39") %>%
+    # Quitar muestra 18_Alb porque murió en quirófano
+    dplyr::filter(nombre_muestra != "18_Alb")
+```
+
+```{r}
+vis_miss(covs)
+```
+
+## Retirar variables
+
+```{r}
+covs <- covs %>%
+    select(-c("LÍQUIDO", "TEJIDO-T1", "TEJIDO-T3", "CÓDIGO", "Number")) %>%
+    select(-c("FWI")) %>% # lo quito porque soalmente lo podemos medir en los muertos DCD
+    select(-c("SHOCK", "Days_ex_rtx"))
+
+```
+
+## Factorizar variables
+
+```{r}
+
+covs$Donación <- factor(covs$Donación, levels = c(0, 1), labels = c("DBD", "DCD"))
+covs$Sub_Donac <- factor(covs$Sub_Donac, levels = c(0, 1, 2, 3, 4), labels = c("ACV", "TCE", "Encefalopatía anóxica", "Cardiomiopatía", "Otros"))
+covs$Sexo_D <- factor(covs$Sexo_D, levels = c(0,1), labels = c("Masculino", "Femenino"))
+covs$TX_x_RTX <- factor(covs$TX_x_RTX, levels = c(0,1), labels = c("NO", "SI"))
+covs$Machine <- factor(covs$Machine, levels = c(0,1,2), labels = c("SRR","NRP", "DBD"))
+covs$NRP_Total <- factor(covs$NRP_Total, levels = c(0,1), labels = c("NO","SI"))
+covs$Sexo_R <- factor(covs$Sexo_R, levels = c(0,1), labels = c("Masculino", "Femenino"))
+covs$Disease_R <- factor(covs$Disease_R, 
+                         levels = c(0:20), c("CIRROSIS_ALCOHÓLICA", "HBV", "HCV",	"AUTOINMUNE", "NASH",	"HEMOCROMATOSIS", "ALFA1", "CIRROSIS_BILIAR_PRIMARIA",	"FIBROSIS_CONGÉNITA",	"WILSON", "CEP", "CIRROSIS_CRIPTOGÉNICA", "METASTASIS", "TROMBOSIS", "HTPSEC_BUDD_CHIARI", "POLIQUISTOSIS", "FALLO_HEPÁTICO_FULMINANTE", "COLANGIOPATÍA_ISQUÉMICA", "HEPATOPATIA_CRONICA", "HCC", "RECHAZO_TARDIO")
+                         )
+covs$CHIMERISM <- factor(covs$CHIMERISM, levels = c(0,1), labels = c("NO", "SI"))
+covs$Anastom <- factor(covs$Anastom, levels = c(0,1,3,4,5), labels = c("VB/VB", "CON KEHR", "Biodegradable", "Hepaticoyeyunostomía", "Otros"))
+covs$AR <- factor(covs$AR, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$AHT <- factor(covs$AHT, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Graft_disfunct <- factor(covs$Graft_disfunct, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Biliary_complications <- factor(covs$Biliary_complications, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Exitus <- factor(covs$Exitus, levels = c(0,1,2), labels = c("SI", "NO", "NO VALORABLE"))
+covs$Need_RTX <- factor(covs$Need_RTX, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Supervivencia <- factor(covs$Supervivencia, levels = c(0,1,2), labels = c("SI", "NO", "NO VALORABLE"))
+```
+
+```{r}
+# Cambiar los "NO VALORABLES" por NAs
+covs[covs == "NO VALORABLE"] <- NA
+
+covs$AR <- factor(covs$AR, levels = c("NO", "SI"))
+covs$AHT <- factor(covs$AHT, levels = c("NO", "SI"))
+covs$Graft_disfunct <- factor(covs$Graft_disfunct, levels = c("NO", "SI"))
+covs$Biliary_complications <- factor(covs$Biliary_complications, levels = c("NO", "SI"))
+covs$Exitus <- factor(covs$Exitus, levels = c("SI", "NO"))
+covs$Need_RTX <- factor(covs$Need_RTX, levels =  c("NO", "SI"))
+covs$Supervivencia <- factor(covs$Supervivencia, levels = c("SI", "NO"))
+```
+
+```{r}
+vis_miss(covs)
+```
+
+## Imputar datos
+
+```{r, eval=FALSE}
+set.seed(1234)
+covs <- complete(mice(covs, method = "rf", m = 5, maxit = 50))
+
+saveRDS(covs, "../RDSs/covs.RDS")
+```
+
+```{r}
+covs <- readRDS("../RDSs/covs.RDS")
+```
+
+# Análizar variables
+
+```{r, fig.height=20, fig.width=10}
+factor_cols <- sapply(covs, is.factor)
+data_long <- pivot_longer(covs, cols = names(which(factor_cols)), 
+                          names_to = "Variable", values_to = "Value")
+
+plots <- list()
+
+for(variable in unique(data_long$Variable)) {
+  
+  data_filtered <- data_long %>%
+    filter(Variable == variable) %>%
+    group_by(Value) %>%
+    summarize(Frequency = n(), .groups = 'drop') %>%
+    mutate(Percentage = Frequency / sum(Frequency) * 100) %>%
+    ungroup()
+  
+  p <- ggplot(data_filtered, aes(x = Value, y = Percentage, fill = Value)) +
+    geom_col(position = position_dodge(), alpha = 0.7) +
+    scale_fill_viridis_d() +
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Percentage") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 12), 
+        axis.title = element_text(size = 10),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots, ncol = 3))
+```
+
+```{r, fig.height=10, fig.width=10}
+plots <- list()
+for (colname in names(covs)) {
+    if (!is.factor(covs[[colname]]) & !is.character(covs[[colname]])) {
+        p <- ggplot(covs, aes_string(x = colname)) +
+            #geom_density(adjust=1.5, alpha=.7, fill="#f1e6b2") +
+            geom_density(adjust=1.5, fill="#f1e6b2", alpha = 0.7) +
+            theme_minimal() +
+            labs(title = colname,
+                x = colname) 
+
+        plots[[colname]] <- p
+    }
+}
+
+do.call(grid.arrange, c(plots, ncol= 2))
+```
+
+```{r, fig.height=10, fig.width=10}
+plots <- list()
+for (colname in names(covs)) {
+    if (!is.factor(covs[[colname]]) & !is.character(covs[[colname]])) {
+        p <- ggplot(covs, aes_string(x = colname)) +
+            #geom_density(adjust=1.5, alpha=.7, fill="#f1e6b2") +
+            geom_boxplot(adjust=1.5, fill="#f1e6b2", alpha = 0.7) +
+            theme_minimal() +
+            labs(title = colname,
+                x = colname) 
+
+        plots[[colname]] <- p
+    }
+}
+
+do.call(grid.arrange, c(plots, ncol= 2))
+```
+## One-hot encoding
+
+```{r}
+covs2 <- data.frame(matrix(ncol = 0, nrow = nrow(covs))) # Hago un dataframe vacio para meter los datos procesados
+
+for (colname in names(covs)) {
+  if (is.factor(covs[[colname]]) & length(levels(covs[[colname]])) > 2) {
+
+    dummy_df <- dummy_cols(covs[colname], 
+                           remove_selected_columns = TRUE) # quitar las variables iniciales
+    
+    dummy_df <- data.frame(lapply(dummy_df, factor))
+
+    covs2 <- cbind(covs2, dummy_df)
+
+  } else {
+
+    covs2[[colname]] <- covs[[colname]] # si son numéricas o categóricas binarias, las añadimos igual
+  }
+}
+covs <- covs2
+covs
+```
+
+```{r}
+# vamos a quitar aquellas columnas que solamente tengan 0s
+lista <- list()
+for (i in names(covs)){
+    if(all(covs[[i]] == 0)) {
+       lista <- append(lista, i)
+    } 
+}
+covs <- covs[, !names(covs) %in% lista]
+```
+
+## Estadistico entre Supervivencia vs No supervivencia de cada variable
+
+```{r}
+covs_statistics <- data.frame()
+for (i in names(covs)){
+    
+    if (is.numeric(covs[[i]])){
+        datos <- covs %>%
+            group_by(Supervivencia) %>%
+            summarize(mediana = median(.data[[i]], na.rm = TRUE),
+                      sd_value = sd(.data[[i]], na.rm = TRUE)) 
+        
+        wilcox_test_result <- wilcox.test(covs[[i]] ~ covs$Supervivencia)
+        
+        covs_statistics[i, "Rechazo"] <- paste0(datos[1,2], " (", round(datos[1,3], 2), ")")
+        covs_statistics[i, "Supervivencia"] <- paste0(datos[2,2], " (", round(datos[2,3], 2), ")")
+        covs_statistics[i, "p-value"] <- if (wilcox_test_result$p.value > 0.05){
+            "n.s."
+        } else if (wilcox_test_result$p.value < 0.05 & wilcox_test_result$p.value > 0.01){
+            "<0.05"
+        } else if (wilcox_test_result$p.value < 0.01 & wilcox_test_result$p.value > 0.001){
+            "<0.01"
+        } else if (wilcox_test_result$p.value < 0.001) {
+            "<0.001"
+        }
+
+    } else if (is.factor(covs[[i]])){
+        if (i == "Supervivencia") {
+            next
+        }
+        
+        frecuencia <- table(covs[[i]], covs[["Supervivencia"]])
+        rownames(frecuencia) <- c(paste(i, rownames(frecuencia), sep = "_"))
+        colnames(frecuencia) <- c("Rechazo", "Supervivencia")
+        
+        test <- fisher.test(frecuencia)
+        
+        covs_statistics[i, "Rechazo"] <- paste0(frecuencia[2,1], "/", frecuencia[2,1] + frecuencia[1,1]," (", round(frecuencia[2,1]/(frecuencia[2,1] + frecuencia[1,1])*100, 2), "%)")
+        covs_statistics[i, "Supervivencia"] <- paste0(frecuencia[2,2], "/", frecuencia[2,2] + frecuencia[1,2]," (", round(frecuencia[2,2]/(frecuencia[2,2] + frecuencia[1,2])*100, 2), "%)")
+        covs_statistics[i, "p-value"] <- if (test$p.value > 0.05){
+            "n.s."
+        } else if (test$p.value < 0.05 & test$p.value > 0.01){
+            "<0.05"
+        } else if (test$p.value < 0.01 & test$p.value > 0.001){
+            "<0.01"
+        } else if (test$p.value < 0.001) {
+            "<0.001"
+        }
+        
+    }
+}
+
+DT::datatable(covs_statistics)
+```
+
+## Representación en función de Supervivencia
+
+```{r, fig.width=15, fig.height=10}
+data_long <- covs %>%
+  select(-nombre_muestra, -Edad_D, -BMI_D, -GOT_D, -GPT_D, -PT_ACT_D, -Cold_Isch, -Edad_R, -BMI_R, -MEAF_score) %>%
+  pivot_longer(cols = -Supervivencia, 
+               names_to = "Variable", values_to = "Value")
+
+plots <- list()
+
+for(variable in unique(data_long$Variable)) {
+  data_long$Supervivencia <- factor(data_long$Supervivencia)
+  
+  data_filtered <- data_long %>%
+    filter(Variable == variable) %>%
+    group_by(Value, Supervivencia) %>%
+    summarize(Frequency = n(), .groups = 'drop') %>%
+    mutate(Percentage = Frequency / sum(Frequency) * 100) %>%
+    ungroup()
+  
+  p <- ggplot(data_filtered, aes(x = Supervivencia, y = Percentage, fill = Value)) +
+    geom_col(position = "stack", alpha = 0.7) +
+    scale_fill_viridis_d() +
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Percentage") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 16), axis.title = element_text(size = 10)) +
+    theme(axis.text.x = element_text(size = 16))+ 
+    theme(legend.position = "top", legend.title = element_blank())
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots[1:12], ncol=4))
+do.call(grid.arrange, c(plots[13:24], ncol=4))
+do.call(grid.arrange, c(plots[25:36], ncol=4))
+do.call(grid.arrange, c(plots[37:48], ncol=4))
+```
+
+```{r, fig.width=15, fig.height=10}
+data_long <- covs %>%
+  select(-nombre_muestra, -Edad_D, -BMI_D, -GOT_D, -GPT_D, -PT_ACT_D, -Cold_Isch, -Edad_R, -BMI_R, -MEAF_score) %>%
+  pivot_longer(cols = -Supervivencia, 
+               names_to = "Variable", values_to = "Value")
+
+plots <- list()
+
+for(variable in unique(data_long$Variable)) {
+  data_long$Supervivencia <- factor(data_long$Supervivencia)
+  
+  data_filtered <- data_long %>%
+    filter(Variable == variable) %>%
+    group_by(Value, Supervivencia) %>%
+    summarize(Frequency = n(), .groups = 'drop') %>%
+    mutate(Percentage = Frequency / sum(Frequency) * 100) %>%
+    ungroup()
+  
+  p <- ggplot(data_filtered, aes(x = Supervivencia, y = Percentage, fill = Value)) +
+    geom_col(position = "fill", alpha = 0.7) +
+    scale_fill_viridis_d() +
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Percentage") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 16), axis.title = element_text(size = 10)) +
+    theme(axis.text.x = element_text(size = 16))+ 
+    theme(legend.position = "top", legend.title = element_blank())
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots[1:12], ncol=4))
+do.call(grid.arrange, c(plots[13:24], ncol=4))
+do.call(grid.arrange, c(plots[25:36], ncol=4))
+do.call(grid.arrange, c(plots[37:48], ncol=4))
+```
+
+```{r, fig.width=10, fig.height=10}
+data <- covs %>%
+  select(Edad_D, BMI_D, GOT_D, GPT_D, PT_ACT_D, Cold_Isch, Edad_R, BMI_R, MEAF_score, Supervivencia)
+
+plots <- list()
+
+for(variable in names(data)) {
+    if (variable == "Supervivencia"){
+        next
+    }
+  p <- ggplot(data, aes_string(y = variable, x = "Supervivencia", fill = "Supervivencia")) +
+    geom_boxplot(alpha=0.4) +
+    geom_jitter(color ="#8B1A1A", size = 1, alpha = 0.7, width = 0.15) +
+    scale_fill_viridis_d()+
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Percentage") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 16), axis.title = element_text(size = 10)) +
+    theme(axis.text.x = element_text(size = 16))
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots[1:9], ncol=3))
+```
+
+## Escalar los datos
+
+```{r}
+# for (colname in names(covs)) {
+#   if (is.numeric(covs[[colname]])) {
+# 
+#     dummy_df <- dummy_cols(covs[colname],
+#                            remove_selected_columns = TRUE) # quitar las variables iniciales
+#     
+#     dummy_df <- data.frame(lapply(dummy_df, factor))
+# 
+#     covs2 <- cbind(covs2, dummy_df)
+# 
+#   } else {
+# 
+#     covs2[[colname]] <- covs[[colname]] # si son numéricas o de otra clase, las añadimos igual
+#   }
+# }
+# 
+# 
+# BostonHousing.scaled <- data.frame(scale(covs[,-]))
+# BostonHousing.scaled <- cbind(BostonHousing.scaled, chas = BostonHousing$chas)
+# BostonHousing.scaled$chas <- as.numeric(BostonHousing.scaled$chas) - 1
+# 
+# datos_long_boston <- pivot_longer(BostonHousing.scaled, cols = -chas, names_to = "Variable", values_to = "Valor")
+# 
+# ggplot(datos_long_boston, aes(x = Variable, y = Valor, fill = Variable)) +
+#   geom_boxplot() +
+#   scale_fill_viridis(discrete = TRUE, alpha = 0.6) +
+#   theme(
+#     legend.position = "none",
+#     plot.title = element_text(size = 14, hjust = 0.5),  
+#     axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  
+#     axis.text.y = element_text(size = 8),  
+#     axis.title = element_text(size = 10),  
+#     axis.title.x = element_text(margin = margin(t = 10), hjust = 0.5),  
+#     axis.title.y = element_text(margin = margin(r = 10), hjust = 0.5)  
+#   ) +
+#   ggtitle("Variables") +
+#   xlab("Variables") +
+#   ylab("Count")
+```
+
+# Variables por batches
+
+```{r}
+samples <- otus_lp_t1_t3 %>%
+    dplyr::select(codigo, nombre_muestra, tipo_muestra, Batch) %>%
+    as.data.frame()
+
+samples <- samples[!duplicated(samples$codigo), ]
+
+samples_metadata <- dplyr::left_join(samples, covs, by= "nombre_muestra" )
+```
+
+```{r}
+samples_lp <- samples_metadata %>%
+    dplyr::filter(tipo_muestra == "LP")
+
+samples_t1 <- samples_metadata %>%
+    dplyr::filter(tipo_muestra == "T1")
+
+samples_t3 <- samples_metadata %>%
+    dplyr::filter(tipo_muestra == "T3")
+```
+
+```{r, fig.width=15, fig.height=15}
+data_long <- samples_lp %>%
+  select(-nombre_muestra, -codigo,-tipo_muestra, -Edad_D, -BMI_D, -GOT_D, -GPT_D, -PT_ACT_D, -Cold_Isch, -Edad_R, -BMI_R, -MEAF_score) %>%
+  pivot_longer(cols = -Batch, 
+               names_to = "Variable", values_to = "Value")
+
+plots <- list()
+
+for(variable in unique(data_long$Variable)) {
+  data_long$Batch <- factor(data_long$Batch)
+  
+  data_filtered <- data_long %>%
+    filter(Variable == variable) %>%
+    group_by(Value, Batch) %>%
+    summarize(Frequency = n(), .groups = 'drop') %>%
+    mutate(Percentage = Frequency / sum(Frequency) * 100) %>%
+    ungroup()
+  
+  p <- ggplot(data_filtered, aes(x = Batch, y = Percentage, fill = Value)) +
+    geom_col(position = "fill", alpha = 0.7) +
+    scale_fill_viridis_d() +
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Percentage") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 16), axis.title = element_text(size = 10)) +
+    theme(axis.text.x = element_text(size = 16, angle = 45))+ 
+    theme(legend.position = "top", legend.title = element_blank())
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots[1:12], ncol=4))
+do.call(grid.arrange, c(plots[13:24], ncol=4))
+do.call(grid.arrange, c(plots[25:36], ncol=4))
+do.call(grid.arrange, c(plots[37:48], ncol=4))
+```
+
+```{r, fig.width=10, fig.height=10}
+data <- samples_lp %>%
+  select(Edad_D, BMI_D, GOT_D, GPT_D, PT_ACT_D, Cold_Isch, Edad_R, BMI_R, MEAF_score, Supervivencia, Batch)
+
+plots <- list()
+
+for(variable in names(data)) {
+    if (variable == "Supervivencia"){
+        next
+    }
+  p <- ggplot(data, aes_string(y = variable, x = "Batch", fill = "Batch")) +
+    geom_boxplot(alpha=0.4) +
+    geom_jitter(color ="#8B1A1A", size = 1, alpha = 0.7, width = 0.15) +
+    scale_fill_viridis_d()+
+    theme_minimal() +
+    labs(title = variable,
+         x = "", y = "Units") +
+    theme(legend.position = "none") +
+    theme(plot.title = element_text(size = 16), axis.title = element_text(size = 10)) +
+    theme(axis.text.x = element_text(size = 12, angle = 45))
+  
+  plots[[variable]] <- p
+}
+
+do.call(grid.arrange, c(plots[1:9], ncol=3))
+```
+
+
+# Importancia variables
+
+```{r}
+covs2 <- covs
+for (i in colnames(covs)){
+    
+    if (is.numeric(covs[[i]])){
+        covs2[[i]] <-  covs[[i]]
+        
+    } else if (is.character(covs[[i]])) {
+        covs2[[i]] <-  covs[[i]]
+        
+    } else {
+       covs2[[i]] <- as.numeric(covs[[i]]) - 1
+        
+    }
+}
+covs2
+
+
+
+# Calcular la matriz de correlación
+corr_matrix <- cor(covs2[,-1])
+
+# Visualizar la matriz de correlación
+library(corrplot)
+corrplot(corr_matrix, method = "circle", is.corr = F, cl.pos = 'n',tl.pos = 'n')
+
+```
+
+```{r}
+# Realizar PCA
+pca <- prcomp(covs2[,-1], scale = TRUE)
+
+# Mostrar la proporción de la varianza explicada por cada componente
+summary(pca)
+
+# Graficar la varianza explicada acumulada
+screeplot(pca, type = "lines")
+
+
+fviz_pca_biplot(pca)
+```
+
+```{r}
+library(MASS)
+
+# Ajustar un modelo inicial
+model <- lm(Supervivencia ~ ., data = covs2[,-1])
+
+# Aplicar stepAIC para selección de variables
+step_model <- stepAIC(model, direction = "both", scale = T)
+
+# Mostrar el modelo resultante
+summary(step_model)
+
+```
+
+```{r, fig.height=10, fig.width=10}
+library(randomForest)
+
+# Ajustar un modelo de Random Forest
+rf_model <- randomForest(Supervivencia ~ ., data = covs2[, -1], importance = TRUE)
+
+# Mostrar la importancia de las variables
+importance(rf_model)
+varImpPlot(rf_model)
+```
+
+```{r}
+# Realizar RDA
+rda_model <- rda(covs2$Supervivencia ~ ., data = covs2[, -1])
+
+# Ver las proporciones de varianza explicada
+summary(rda_model)
+coef(rda_model)
+
+# Graficar el modelo RDA
+plot(rda_model)
+screeplot(rda_model, type = "lines")
+anova(rda_model, by = "terms")
+
+```
+
+
+```{r}
+df_scaled <- scale(covs2[,-1])
+
+library(umap)
+local.config <- umap.defaults
+set.seed(432)
+df_umap <- umap(df_scaled, random_stage=123)
+
+umap.data <- as.data.frame(df_umap$layout)
+umap.data$nombre_muestra <- covs2$nombre_muestra
+umap.data.covs <- merge(umap.data, covs2, by = "nombre_muestra")
+
+ggplot(umap.data.covs, aes(x=V1, y=V2, color = Supervivencia)) +  
+  geom_point() +
+  xlab("UMAP1") + ylab("UMAP2") +
+  ggtitle("UMAP") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+```
+
+```{r}
+df_scaled <- scale(covs2[,-1])
+library(Rtsne)
+set.seed(1234)
+tsne <- Rtsne(df_scaled, dims = 2, theta = 0.0, perplexity = 30)
+
+tsne.data <- as.data.frame(tsne$Y)
+tsne.data$nombre_muestra <- covs2$nombre_muestra
+tsne.data.covs <- merge(tsne.data, covs2, by = "nombre_muestra")
+
+ggplot(tsne.data.covs, aes(x = V1, y = V2, color = Supervivencia)) +
+    geom_point() +
+    theme_minimal()
+```
+
+
+# Guardar datos
+
+```{r}
+save.image("../Rdatas/covariables_limpieza.RData")
+```
+
+
+
+
+

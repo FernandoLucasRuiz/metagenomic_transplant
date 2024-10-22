@@ -1,0 +1,463 @@
+---
+title: "Microbiota hepática"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: false
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+# Punto de partida
+
+Tenemos un análisis metagenómico de 114 pifspo de pacientes. De esos pacientes hay 33 con metagénomica en muestras de hígado a tiempo 1, que a su vez 27 tambien tienen el analisis a T3. El análisis metagenómico se hizo con IonTorrent de secuenciación larga.
+
+Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez allí hice el análisis completo para extraer conteos mediante la propia web ya que Fernando de Bioinformática me dijo que era lo que solian hacer ellos con las secuenciaciones de IonTorrent. Seguí el workflow que daba la opción en la web para metagenómica de 16S. Me descargué los datos a R para realizar el análisis completo.
+
+------------------------------------------------------------------------
+
+# To do
+
+-   [x] Hacer código para leer las lecturas escogiendo solamente c("Phylum", "Class", "Order", "Family", "Genus", "Species", "Count")
+
+-   [x] De ese código nomeclaturizar las muestras según nombre archivo
+
+-   [x] Limpiar datos y completar los vacios con NA
+
+-   [x] Asignar a datos de conteo si provienen de muestras LP, T1 o T3
+
+-   [x] Leer los datos de las covariables
+
+-   [x] Quitar c("LÍQUIDO", "TEJIDO-T1", "TEJIDO-T3", "CÓDIGO", "Number")
+
+-   [x] Quitar "FWI" porque tiene un 65% de NAs
+
+-   [x] Factorizar variables
+
+-   [x] Preguntar a Alberto acerca variable Disease_R porque no concuerda los levels con los numeros.
+
+-   [x] imputar datos con mice y RF.
+
+-   [x] Visualizar variables
+
+-   [x] Pasarle one-hot encoding a las variables categóricas
+
+-   [ ] Leer <https://microbiome.github.io/OMA/docs/devel/>
+
+    -   [x] Preparar los datos para crear TreeSE
+    -   [x] Hacer analisis alfa contra LP, T1 y stool
+    -   [ ] hacer beta diversidad en LP para ver si se distinguen.
+
+-   [x] Meter batch en las lectura de conteos
+
+-   [x] Solucionar Batch con ConQuR
+
+    -   [x] Probar con distintas variables
+
+-   [x] En covariables cambiar los No valorables por NAs y luego imputarlos.
+
+-   [x] Mirar covariables a quitar por correo de Alberto. Mirar pacientes muertos en quirófano y quitarlos
+
+-   [x] Mirar contaminación
+
+-   [ ] alpha diversidad entre ellas lp y t1 por pairwise
+
+-   [ ] correlacionar alpha diversidad con covariables?
+
+-   [x] Programa para buscar mejor combinación de conqur
+
+-   [x] Probar otros paquetes
+
+-   [x] Hacer batch effect en LP y T1 por separado.
+
+-   [ ] Hacer comparativa de cantidad de phyla, genus, etc en variables de salida (supervivencia, AR, etc)
+
+    -   [ ] pearson
+
+    -   [ ] glm
+
+-   [ ] Hacer comparativa en alpha en variables de salida (supervivencia, AR, etc)
+
+-   [x] Juntar los Batchs por días para hacerlos más grandes
+
+-   [x] probar tejido hepático de SRA
+
+    -   [x] <https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SRP377201&o=acc_s%3Aa>
+
+    -   [ ] <https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SRP499252&o=acc_s%3Aa>
+
+-   [x] Hacer QIIME2 para extraer OTUs
+
+-   [x] Meter OTUs a R
+
+-   [x] Cambiar nombres de phylum para igualarlos
+
+-   [x] Ver impacto rarified para mitigar impacto de lectura? aprender del tema
+
+-   [x] DESeq2 entre variables de salida con los reinos
+
+-   [ ] Community diversity
+
+    -   [ ] Ver comparativas de LP
+
+    -   [ ] LP con las demás
+
+-   [ ] Community similarity
+
+    -   [ ] Probar los diferentes PCoAs
+
+    -   [ ] PCa
+
+    -   [ ] tSNE
+
+    -   [ ] UMAP
+
+-   [ ] Community typing
+
+    -   [ ] Clustering
+
+    -   [ ] dimensionality reduction
+
+    -   [ ] Heatmaps with clusters
+
+-   [ ] Differential abundance
+
+    -   [ ] ALDEx2
+
+    -   [ ] ANCOM-BC
+
+    -   [ ] MaAsLin2
+
+    -   [ ] PhILR
+
+    -   [ ] ZicoSeq
+
+-   [ ] Correlation
+
+    -   [ ] Association between taxa
+
+    -   [ ] Association between taxa and sample metadata
+
+    -   [ ] Association between sample metadata variables
+
+-   [ ] Selección variables metadata (Tema 7 machine learning)
+
+------------------------------------------------------------------------
+
+# To read
+
+-   Recomendaciones
+
+    -   [x] Vesiculas paper <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11245684/#>
+
+-   Bioinformática
+
+    -   [x] ConQuR para solucionar efectos de Batch en metagenomica <https://www.nature.com/articles/s41467-022-33071-9#Sec9>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/38396294/>
+
+    -   [x] [IMPORTANTE <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8106563/>]{.underline}
+
+    -   [ ] <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10989811/>
+
+    -   [ ] <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9515207/>
+
+-   liver AND metagenomic
+
+    -   [x] REvision liver gut microbiota. <https://pubmed.ncbi.nlm.nih.gov/31657225/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/30643240/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/34896404/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/37040763/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/28467925/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/29018189/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/25079328/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/29942096/>
+
+-   metagenomic AND machine learning
+
+    -   [x] [Prediccion cirrosis <https://pubmed.ncbi.nlm.nih.gov/32610095/>]{.underline}
+
+    -   [x] <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9649010/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/29536444/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/37208107/>
+
+    -   [ ] De aquí podemos sacar saliva de sanos <https://pubmed.ncbi.nlm.nih.gov/34793867/>
+
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/36699735/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/38977906/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/37821698/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/33059075/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/37594964/>
+
+    -   [ ]
+
+-   [ ] (metagenomic OR microbiota) AND (liver OR hepatic) NOT (gut OR stool OR intestinal)
+
+    -   [ ] <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10353526/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/27358174/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/35166723/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/29843959/>
+
+------------------------------------------------------------------------
+
+# Reuniones
+
+## 2024-09-06 Alberto zoom
+
+**Covariables y lectura conteos**
+
+Como vemos la secuenciación llega muy bien hasta familia pero falta un 27% de genus y un 54% de especies.
+
+-   **Excelente:** \>70% de las lecturas asignadas a nivel de especie.
+
+-   [**Bueno: 50-70% de las lecturas asignadas a nivel de especie.**]{.underline}
+
+-   **Aceptable:** 30-50% de las lecturas asignadas a nivel de especie.
+
+-   **Bajo:** \<30% de las lecturas asignadas a nivel de especie.
+
+![](../images/clipboard-3412208734.png)
+
+Con respecto a las covariables vemos que FWI tiene un 65% de datos faltantes por lo que considero que deberiamos quitarlos ya que creo que son demasiados datos faltantes y no aporta ningun valor al análisis.
+
+![](../images/clipboard-2744065072.png)
+
+Ahora cambio Los NO VALORABLES por NAs para luego imputarlos. Hay muy pocos (20 en total).
+
+![](../images/clipboard-3014348778.png)
+
+Le pasamos una imputación de los datos mediante el paquete mice utilizando random forest. 5 imputaciones y 50 iteraciones para una imputacion más precisa.
+
+![](../images/clipboard-3821279648.png)
+
+Preguntas:
+
+-   Disease_R
+
+-   Qué hacemos con los No valorable? Qué pasó? Los pongo como NA y los imputo?
+
+![](../images/clipboard-2118879129.png)Los valores de Days_ex_rtx tengo dudas de cómo ponerlos porque 365 significa exitus?
+
+![](../images/clipboard-3951638474.png)![](../images/clipboard-519506745.png)
+
+**MIA**
+
+He generado IDs aleatorios a las combinaciones taxonomicas posibles para poder hacer TreeSE de MIA porque si no no me dejaba.
+
+He descubierto que habia duplicados de random_ids cuando hacia las matrices para meterlo a MIA. He descubierto que al meter los datos de cada muestra había tres opciones en las columnas taxonomicas porque podian ser "", "slash calls" y "...level ID only". Por eso he decidido sumar los slash calls con los "...level ID only" para que así solamente haya un valor.
+
+He metido los metadatos de las covariables a ver qué tal.
+
+------------------------------------------------------------------------
+
+Community similarity decido analizar solamente de momento las muestras de los liquidos. Si vemos el azul parece que hay dos poblaciones en los liquidos
+
+![](../images/clipboard-1384309837.png)
+
+Si nos fijamos en la diversidad por coverage vemos que los indices se ven mermados en las muestras DAMPS tatatata...
+
+![](../images/clipboard-4166116467.png)
+
+Voy a meterle el batch para ver si es así. Vemos que RUN 46, RUN 45, PGM 140, PGM 141 tienen una cobertura menor que los otros RUNs. Vamos a ver cómo podemos solucionar el efecto de batch.
+
+![](../images/clipboard-2625092221.png)
+
+He calculado el tamaño de la libreria y parece ser que tambien puede ser un cofounding
+
+![](../images/clipboard-3806330938.png)
+
+Probar el paquete ConQuR respaldado por <https://www.nature.com/articles/s41467-022-33071-9#Sec9> (NATURE) y <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10997506/> (ONCOGENE respondiendo a un NATURE)
+
+-   La distancia **Bray-Curtis** es una métrica que mide la disimilitud entre dos muestras basadas en sus composiciones de especies o unidades taxonómicas. Es sensible a la presencia y abundancia de especies, pero **no** toma en cuenta las relaciones logarítmicas entre las abundancias relativas.
+
+-   La distancia **Aitchison** se utiliza para analizar datos composicionales, es decir, datos que representan proporciones o abundancias relativas.
+
+Todas las muestras con todas las covariables.
+
+![](../images/clipboard-1202551723.png)
+
+Solamente todas las muestras LP con todas las covariables. No me deja ahora el penalizado con Lasso.
+
+![](../images/clipboard-3658978466.png)
+
+He cogido solamente las variables (Donación, MEAF_score, Supervivencia)
+
+![](../images/clipboard-3478904101.png)
+
+Ahora solamente liquidos
+
+![](../images/clipboard-2125834018.png)Voy a probar solamente con una covariable y todas las muestras
+
+![Estos son los resultados del Nature del paquete.](../images/clipboard-2864752943.png)
+
+![](../images/Captura%20de%20pantalla%202024-09-05%20a%20las%2013.07.22.png)
+
+PERMANOVAR2.
+
+Los valores en cada tabla son R², que representan la proporción de la variabilidad explicada por los factores, es decir que explica la variabilidad en los datos. Queremos que batch sea lo más bajo posible.
+
+![](../images/Captura%20de%20pantalla%202024-09-05%20a%20las%2013.52.39.png)
+
+**proximos pasos**
+
+-   Terminar un fine tunning que te da la opción ConQuR para buscar la mejor opción (tarda mucho)
+
+-   Probar otros métodos de reducir efecto batch (Combat, Harmony, limma, RUVSeq, ...)
+
+-   Analisis general de metagenómica.
+
+    -   Por taxa y por rara-taxa
+
+-   Seguir mirando patrones dentro de los metadatos
+
+    -   No supervisado, ver clusters.
+
+    -   Probar modelos de predicción.
+
+## 2024-09-27 Alberto
+
+### ConQuR fine tunning
+
+Estoy probando distintas combinaciones de Runs y de muestras para ver cual es la que mejor quita el batch effect
+
+-   Todas las muestras sin filtrado en RUN 46
+-   Todas las muestras filtrado todas las variables de donante en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, Sexo_D, Edad_D, BMI_D) en RUN 46
+-   Todas las muestras filtrado por tipo de muestra (lp, t1, t3) en RUN 46
+-   Muestras LP sin filtrado en RUN 46
+-   Muestras LP filtrado por variables de donante en RUN 46
+-   Muestras LP filtrado algunas variables de donante (Donación, Sexo_D, Edad_D, BMI_D) en RUN 46
+
+He hecho un programa para recoger todas la información de cada muestra con cada RUN y cada variable
+
+| NO mejora ninguna variable en ningun run. El mejor reduccion de batch es un 4.2 o 3.9 |
+|---------------------------------------------------------------------------------------|
+
+Voy a seguir con las combinaciones de donante filtrado para ver la mejor posible combinación con todas las muestras
+
+-   Todas las muestras filtrado algunas variables de donante (Donación, Sexo_D, Edad_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, Sexo_D, BMI_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, Edad_D, BMI_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Sexo_D, Edad_D, BMI_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, Sexo_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, Edad_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Donación, BMI_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Sexo_D, Edad_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Sexo_D, BMI_D) en RUN 46
+-   Todas las muestras filtrado algunas variables de donante (Edad_D, BMI_D) en RUN 46
+
+Parece que la mejor opción es con todas las muestras y cogiendo las variables Donación, Sexo_D, Edad_D y BMI_D
+
+![](../images/clipboard-847495865.png)
+
+![](../images/Captura%20de%20pantalla%202024-09-10%20a%20las%2012.41.09.png)
+
+Vamos a probar ahora el mejor RUN con esa combinación. Se mejora con el RUN PGM 135
+
+![](../images/Captura%20de%20pantalla%202024-09-10%20a%20las%2013.43.07.png)
+
+Voy a probar supervivencia en run46 -\> no mejora. Se queda en un 4.3
+
+Voy a probar supervivencia con Donación, Sexo_D, Edad_D, BMI_D en run46 -\> mejora a 3.6
+
+![](../images/Captura%20de%20pantalla%202024-09-12%20a%20las%2012.14.19.png)
+
+Me quedo con la de Supervivencia, Donación, Sexo_D, Edad_D, BMI_D en run46
+
+### Alfa diversidad
+
+![](images/clipboard-327939672.png)
+
+![](images/clipboard-3476263066.png)
+
+**Índices de Diversidad (Diversity)** Los índices de diversidad miden cuán diversas son las comunidades en función de la riqueza de especies y la distribución de sus abundancias.
+
+1.  **`coverage_diversity`**: Un índice que ajusta la diversidad observada según la cobertura de muestreo, es decir, teniendo en cuenta cuántas especies han sido observadas en relación con la cobertura total estimada.
+
+2.  **`gini_simpson_diversity`**: Similar al índice de Simpson, este índice mide la probabilidad de que dos individuos seleccionados al azar en la comunidad pertenezcan a especies diferentes. Se basa en la abundancia relativa de las especies.
+
+3.  **`inverse_simpson_diversity`**: El índice de Simpson inverso es una transformación del índice de Simpson que amplifica los valores, haciendo que la diferencia entre las comunidades diversas y no diversas sea más clara. Cuanto mayor sea el valor, mayor es la diversidad.
+
+4.  **`log_modulo_skewness_diversity`**: Mide la asimetría (skewness) de la distribución de las abundancias relativas de las especies. Un valor alto sugiere que pocas especies dominan en términos de abundancia.
+
+5.  **`shannon_diversity`**: El índice de diversidad de Shannon es uno de los más comunes y mide tanto la riqueza de especies como la equidad de su distribución. Cuanto mayor sea el índice, mayor será la diversidad, ya que se consideran tanto el número de especies como su abundancia relativa.
+
+![](images/clipboard-179760968.png)
+
+**Índices de Dominancia (Dominance)** Estos índices miden cuán dominada está una comunidad por una o pocas especies.
+
+8.  **`absolute_dominance`**: Mide la dominancia absoluta de una especie, es decir, la proporción que representa la especie más abundante sobre el total de la comunidad.
+
+9.  **`dbp_dominance`**: Índice de dominancia de Berger-Parker (DBP), que mide la dominancia como la proporción de la especie más abundante en relación con el total de individuos. Cuanto mayor sea el valor, mayor será la dominancia.
+
+10. **`core_abundance_dominance`**: Mide la dominancia considerando las especies más abundantes en el núcleo de la comunidad, que pueden definirse como aquellas presentes en casi todas las muestras.
+
+11. **`gini_dominance`**: Basado en el coeficiente de Gini, mide la desigualdad en la distribución de las abundancias. Un valor alto indica una mayor desigualdad y, por lo tanto, una mayor dominancia de una o pocas especies.
+
+12. **`dmn_dominance`**: Un índice de dominancia general que mide cuán concentrada está la abundancia en pocas especies.
+
+13. **`relative_dominance`**: Mide la dominancia en relación con el tamaño total de la comunidad, considerando la proporción de la especie dominante respecto al total de especies.
+
+14. **`simpson_lambda_dominance`**: Índice de Simpson lambda, mide la probabilidad de que dos individuos seleccionados al azar pertenezcan a la misma especie. Cuanto mayor sea el índice, mayor será la dominancia.
+
+![](images/clipboard-1788954250.png)
+
+**Índices de Equidad (Evenness)** Los índices de equidad miden cuán equitativamente están distribuidas las abundancias entre las especies presentes.
+
+15. **`camargo_evenness`**: Mide la equidad en función de la diferencia en las abundancias relativas de las especies. Cuanto mayor sea el valor, más equitativa será la comunidad.
+
+16. **`pielou_evenness`**: La equidad de Pielou es una medida que cuantifica cuán equitativamente están distribuidas las especies en una comunidad, basada en el índice de Shannon.
+
+17. **`simpson_evenness`**: Este índice mide la equidad usando el índice de Simpson, considerando tanto la riqueza de especies como la equidad de la distribución de abundancias.
+
+18. **`evar_evenness`**: Un índice de equidad que se basa en la variabilidad logarítmica de las abundancias de especies. Mide qué tan cerca están las abundancias relativas de todas las especies entre sí.
+
+19. **`bulla_evenness`**: Mide la equidad basada en la proporción de la comunidad que está igualmente distribuida entre las especies. Un valor alto sugiere una distribución más equitativa.
+
+![](images/clipboard-3160590750.png)
+
+**Índices de Riqueza (Richness)** La riqueza mide el número de especies presentes en la comunidad, sin tener en cuenta las abundancias relativas.
+
+20. **`ace_richness`**: ACE (Abundance-based Coverage Estimator) es un estimador de la riqueza de especies que ajusta las especies observadas según la abundancia y la cobertura de muestreo.
+
+21. **`chao1_richness`**: El índice Chao1 estima la riqueza de especies en una comunidad al corregir por especies raras (especies con una sola observación). Este índice es útil cuando se sospecha que no todas las especies han sido observadas.
+
+22. **`hill_richness`**: La riqueza de Hill es una familia de índices que ajusta la riqueza de especies considerando tanto la riqueza observada como las abundancias relativas de las especies.
+
+23. **`observed_richness`**: Es simplemente el número de especies observadas en la muestra, sin ajustar por especies no observadas o cobertura de muestreo.
+
+![](images/clipboard-280868721.png)
+
+### Beta diversidad
+
+![](images/clipboard-2186594477.png)
+
+![](images/clipboard-1184419801.png)
+
+Metiendo PGM 141 en PGM 140 con counts
+
+![](images/clipboard-1879691209.png)

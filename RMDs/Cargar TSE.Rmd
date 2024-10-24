@@ -178,6 +178,7 @@ Plot_PCoA(TAX=taxa_corrected_salida$tax_final, factor=batchid_LP, dissimilarity=
 ```{r}
 PERMANOVA_R2(taxa_LP, batchid_LP, covar_salida)
 PERMANOVA_R2(taxa_corrected_salida$tax_final, batchid_LP, covar_salida)
+
 ```
 
 Para chequear que todos esta correcto
@@ -242,14 +243,16 @@ abundances <- abundances %>%
 # Crear curva de rarefacción con los datos originales
 rarecurve_data <- rarecurve(abundances, step=100, col="blue", label=T, cex=0.6)
 map_dfr(rarecurve_data, bind_rows) %>%
-    bind_cols(sample = rownames(abundances),.) %>%
+   bind_cols(sample = rownames(abundances),.) %>%
     pivot_longer(-sample) %>%
     drop_na() %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "LP")
 
 # Aplicar rarefacción real a las abundancias
 rarefied_abundances_LP <- rrarefy(abundances, sample=quantil1_n_seqs)
@@ -263,8 +266,10 @@ map_dfr(rarecurve_rarefied_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "LP")
 
 pretse_LP$abundance_table <- t(rarefied_abundances_LP)
 ```
@@ -394,8 +399,10 @@ map_dfr(rarecurve_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "T1")
 
 # Aplicar rarefacción real a las abundancias
 rarefied_abundances_T1 <- rrarefy(abundances, sample=quantil1_n_seqs)
@@ -409,8 +416,10 @@ map_dfr(rarecurve_rarefied_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "T1")
 
 pretse_T1$abundance_table <- t(rarefied_abundances_T1)
 ```
@@ -511,8 +520,10 @@ map_dfr(rarecurve_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "Bilis")
 
 # Aplicar rarefacción real a las abundancias
 rarefied_abundances <- rrarefy(abundances, sample=quantil1_n_seqs)
@@ -526,8 +537,10 @@ map_dfr(rarecurve_rarefied_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "Bilis")
 
 pretse_bilis$abundance_table <- t(rarefied_abundances)
 

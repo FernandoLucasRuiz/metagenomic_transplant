@@ -78,12 +78,6 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
 -   [x] Hacer batch effect en LP y T1 por separado.
 
--   [ ] Hacer comparativa de cantidad de phyla, genus, etc en variables de salida (supervivencia, AR, etc)
-
-    -   [ ] pearson
-
-    -   [ ] glm
-
 -   [ ] Hacer comparativa en alpha en variables de salida (supervivencia, AR, etc)
 
 -   [x] Juntar los Batchs por días para hacerlos más grandes
@@ -130,6 +124,18 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
 -   [ ] Differential abundance
 
+    -   [ ] DESeq2
+
+        -   [ ] Variables de salida
+
+            -   [ ] Venn diagram
+
+        -   [ ] Variables donante
+
+            -   [ ] Venn diagram
+
+        -   [ ] Variables receptor?
+
     -   [ ] ALDEx2
 
     -   [ ] ANCOM-BC
@@ -140,6 +146,22 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [ ] ZicoSeq
 
+-   [ ] Alpha diversity
+
+    -   [ ] DESeq2
+
+        -   [ ] Variables de salida
+
+            -   [ ] Venn diagram
+
+        -   [ ] Variables donante
+
+            -   [ ] Venn diagram
+
+        -   [ ] Variables receptor?
+
+    -   [ ] Correlation
+
 -   [ ] Correlation
 
     -   [ ] Association between taxa
@@ -149,6 +171,14 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
     -   [ ] Association between sample metadata variables
 
 -   [ ] Selección variables metadata (Tema 7 machine learning)
+
+-   [ ] T1 vs T3
+
+    -   [ ] Relative abundance
+
+    -   [ ] DESEq2
+
+-   [ ] Bilis SRA
 
 ------------------------------------------------------------------------
 
@@ -461,3 +491,49 @@ Me quedo con la de Supervivencia, Donación, Sexo_D, Edad_D, BMI_D en run46
 Metiendo PGM 141 en PGM 140 con counts
 
 ![](images/clipboard-1879691209.png)
+
+## 2024-10-23
+
+### Contaminantes
+
+P11_LP
+
+### Rarefied
+
+![](images/clipboard-2804211646.png)
+
+![](images/clipboard-3055225662.png)
+
+![](images/clipboard-1398103363.png)
+
+![](images/clipboard-3355103528.png)
+
+### Abundancia
+
+![](images/clipboard-2312435668.png)
+
+![![](images/clipboard-1142670532.png)](images/clipboard-3098222620.png)
+
+![](images/clipboard-1707197485.png)
+
+![](images/clipboard-2392859543.png)
+
+### Comparativa
+
+DESEq2
+
+![](images/clipboard-1379539912.png)
+
+![](images/clipboard-154724463.png)
+
+![](images/clipboard-1060215501.png)
+
+![](images/clipboard-606054388.png)
+
+![](images/clipboard-1230595153.png)
+
+![](images/clipboard-1182281752.png)
+
+![](images/clipboard-3757460327.png)
+
+![](images/clipboard-3208161689.png)

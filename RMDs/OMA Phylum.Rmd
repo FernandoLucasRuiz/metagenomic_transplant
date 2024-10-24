@@ -120,6 +120,7 @@ Vamos a estandarizar los valores para que la media sea 0 en todos los casos.
 tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "relabundance")
 tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "standardize")
 tse_lp <- transformAssay(tse_lp, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "clr", pseudocount = TRUE)
 
 tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "relabundance")
 tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "standardize")
@@ -177,7 +178,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
@@ -191,7 +192,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
 ```{r}
 tse_lp_phylum <- agglomerateByRank(tse_lp, "Phylum")
 
-counts_lp <- as.data.frame(t(assay(tse_lp_phylum))) %>% 
+counts_lp <- as.data.frame(t(assay(tse_lp_phylum, "counts"))) %>% 
     rownames_to_column(var = "sample")
 
 
@@ -203,25 +204,27 @@ dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
     dplyr::select(intersect(names(.), names(counts_lp)), Supervivencia, -sample) %>%
     pivot_longer(-Supervivencia, names_to = "Taxon", values_to = "Abundance") %>%
     group_by(Supervivencia, Taxon) %>%
-    summarize(suma = sum(Abundance)) %>%  
+    summarize(suma = sum(Abundance)) %>%
     group_by(Supervivencia) %>%
-    mutate(suma_condition = sum(suma),  
+    mutate(suma_condition = sum(suma),
            relative_abundance = suma / suma_condition) %>%
     ggplot(aes(x=Supervivencia, y=relative_abundance, fill = Taxon)) +
     geom_bar(stat = "identity") +
     #scale_fill_paletteer_d("ggthemes::Tableau_10") + 
     labs(title = "Phylum Relative Abundance", x = "Taxons", y = "Relative Abundance") +
     theme_minimal() +
-    theme(axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
+    theme(
+        # axis.text.x = element_blank(),
+        # axis.text.y = element_blank(),
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "none",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
-        ) 
+        ) +
+    coord_polar("y", start = 0) 
 
 
 ```
@@ -351,19 +354,10 @@ important.genes.umap1pos %>%
     theme(axis.text.x = element_text(size = 10))
 ```
 
-```{r}
-para_RF %>% 
-    pivot_longer(-Supervivencia) %>% 
-    dplyr::filter(name == "Tenericutes") %>%
-    ggplot(aes(Supervivencia, value)) +
-    geom_boxplot() +
-    geom_jitter(aes(x=Supervivencia, y = value)) + 
-    stat_compare_means(label = "p.signif")
-```
 
 
 
-```{r}
+```{r, fig.width=10, fig.height=5}
 abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
                                                   tse_bilis = tse_bilis,
                                                   tse_t1 = tse_t1,
@@ -392,7 +386,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
@@ -403,7 +397,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
 
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=5}
 abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
                                                   tse_bilis = tse_bilis,
                                                   tse_t1 = tse_t1,
@@ -432,7 +426,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
@@ -443,7 +437,47 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
 
 ```
 
-```{r}
+```{r, fig.width=10, fig.height=5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool),
+                                             ranking = "Family",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+    geom_bar(stat = "identity") +
+    scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+    labs(title = "Family Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",  # Posiciona la leyenda abajo
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+    coord_polar("y", start = 0) +
+    facet_wrap(~TSE, nrow = 1) 
+    
+
+```
+
+```{r, fig.width=10, fig.height=5}
 abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
                                                   tse_bilis = tse_bilis,
                                                   tse_t1 = tse_t1,
@@ -472,7 +506,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
@@ -513,7 +547,7 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
         axis.title.y = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",  # Posiciona la leyenda abajo
-        legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
         legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
         plot.title = element_text(hjust = 0.5, vjust = 5, size = 16),  # Sube el título y ajusta el tamaño
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
@@ -527,11 +561,13 @@ ggplot(abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
 ## Differential Abundance Analysis (DAA)  
 
 ### Counts
+#### Survival
 
 ```{r, message=FALSE}
 counts <- as.data.frame(assay(tse_lp))
 
-metadata <- data.frame(colData(tse_lp))
+metadata <- data.frame(colData(tse_lp)) %>%
+    rownames_to_column(var = "sample")
 metadata$Supervivencia <- relevel(metadata$Supervivencia, ref = "SI")
 
 dds <- DESeqDataSetFromMatrix(countData=counts, 
@@ -568,6 +604,9 @@ taxa_names <- rowData(tse_lp) %>%
 res <-dplyr::left_join(res, taxa_names, by = "code") %>%
     as.data.frame()
 
+```
+
+```{r, fig.width=8, fig.height=5}
 # Volcano Plot
 volcano_data <- as.data.frame(res)
 
@@ -604,8 +643,360 @@ ggplot(volcano_data, aes(x=log2FoldChange,
           legend.text = element_text(size = 12),
           text = element_text(size = 12),
           legend.key.size = unit(0.5, "cm"),
-          plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
           )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = Supervivencia, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = Supervivencia, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+
+#### AR
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp)) %>%
+    rownames_to_column(var = "sample")
+metadata$AR <- relevel(metadata$AR, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~AR)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "AR",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO AR", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "AR"=4, "NO AR"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "AR" = 0.75, "NO AR" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "AR"="#FDE725FF", "NO AR"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: AR vs NO AR") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = AR, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = AR, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+#### AHT
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp))%>%
+    rownames_to_column(var="sample")
+metadata$AHT <- relevel(metadata$AHT, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~AHT)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "AHT",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO AHT", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "AHT"=4, "NO AHT"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "AHT" = 0.75, "NO AHT" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "AHT"="#FDE725FF", "NO AHT"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: AHT vs NO AHT") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = AHT, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = AHT, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+#### Biliary_complications
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp))%>%
+    rownames_to_column(var="sample")
+
+metadata$Biliary_complications <- relevel(metadata$Biliary_complications, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~Biliary_complications)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Biliary_complications",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO Biliary_complications", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "Biliary_complications"=4, "NO Biliary_complications"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "Biliary_complications" = 0.75, "NO Biliary_complications" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "Biliary_complications"="#FDE725FF", "NO Biliary_complications"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: Biliary_complications vs NO Biliary_complications") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = Biliary_complications, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = Biliary_complications, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2, method = "wilcox") +
+    theme(
+        panel.background = element_blank()
+    )
 ```
 
 ### ALDEx2
@@ -948,7 +1339,7 @@ Estos índices miden cuán dominada está una comunidad por una o pocas especies
 
 14. **`simpson_lambda_dominance`**: Índice de Simpson lambda, mide la probabilidad de que dos individuos seleccionados al azar pertenezcan a la misma especie. Cuanto mayor sea el índice, mayor será la dominancia.
 
-```{r, fig.height=8, fig.width=15}
+```{r, fig.height=8, fig.width=10}
 do.call(grid.arrange, c(plots[7:13], ncol=4))
 ```
 

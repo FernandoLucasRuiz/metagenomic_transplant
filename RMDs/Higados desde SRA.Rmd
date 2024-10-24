@@ -310,8 +310,10 @@ map_dfr(rarecurve_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "Liver SRA")
 
 # Aplicar rarefacción real a las abundancias
 rarefied_abundances <- rrarefy(abundances, sample=quantil1_n_seqs)
@@ -325,8 +327,10 @@ map_dfr(rarecurve_rarefied_data, bind_rows) %>%
     mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
     select(-name)%>%
     ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs) +
-    geom_line()
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "T1")
 ```
 
 ```{r}

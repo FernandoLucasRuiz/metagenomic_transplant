@@ -1,72 +1,83 @@
-```{r}
 
-abundancias_relativas_totales <- function(lista_objetos_tse, ranking, top = 10){
-    
-    if (is_null(names(lista_objetos_tse)) == T){
-        stop("Pon nombres en la lista de TSEs")
+```{r}
+library("phyloseq"); packageVersion("phyloseq")
+theme_set(theme_bw())
+library("plyr")
+
+```
+
+```{r}
+# Asegúrate de que assay es una matriz
+otu_table_data <- otu_table(as.matrix(assay(tse_lp)), taxa_are_rows = TRUE)
+
+# Asegúrate de que rowData es un data.frame y conviértelo en una tax_table
+tax_table_data <- tax_table(as.matrix(as.data.frame(rowData(tse_lp))))
+
+# Crea el objeto phyloseq
+tse_lp_phyloseq <- phyloseq(otu_table_data, tax_table_data)
+
+sample_data(tse_lp_phyloseq) <- sample_data(as.data.frame(colData(tse_lp)))
+
+library(tidyr)
+
+# Convertir sample_data a data.frame, aplicar drop_na y reasignarlo
+filtered_sample_data <- data.frame(sample_data(tse_lp_phyloseq)) %>%
+    drop_na(Batch, Supervivencia)
+
+# Reasignar el sample_data filtrado al objeto phyloseq
+sample_data(tse_lp_phyloseq) <- sample_data(filtered_sample_data)
+
+```
+
+
+```{r, fig.width=20, fig.height=20, warning=FALSE}
+data(enterotype)
+enterotype <- subset_taxa(enterotype, Genus != "-1")
+
+dist_methods <- unlist(distanceMethodList)
+# Remove them from the vector
+dist_methods <- dist_methods[-(1:3)]
+dist_methods
+
+# Remove the user-defined distance
+dist_methods = dist_methods[-which(dist_methods=="ANY")]
+
+plist <- vector("list", length(dist_methods))
+names(plist) = dist_methods
+failed_methods <- c()  # Lista para almacenar los métodos que fallan
+
+for (i in dist_methods) {
+    # Intenta calcular la matriz de distancia y la ordenación con manejo de errores
+    tryCatch({
+        # Calcula la matriz de distancia
+        iDist <- distance(tse_lp_phyloseq, method = i)
         
-    }
-    
-    abundancias_relativas <- data.frame(
-        Taxon = character(),               
-        Relative_Abundance = numeric(),      
-        TSE = character())
-    
-    for (i in 1:length(lista_objetos_tse)){
-        tse_ranking <- agglomerateByRank(lista_objetos_tse[[i]], rank = ranking)
+        # Calcula la ordenación (cambia "MDS" a "PCoA" si es necesario)
+        iMDS <- ordinate(tse_lp_phyloseq, "MDS", distance = iDist)
         
-        # Verificar si el assay "counts" está disponible
-        if ("counts" %in% assayNames(tse_ranking)) {
-            row_sums <- assay(tse_ranking, "counts") %>%
-                as.data.frame() %>%
-                rowSums()
-            
-        } else if ("relative_abundance" %in% assayNames(tse_ranking)) {
-            row_sums <- assay(tse_ranking, "relative_abundance") %>%
-                as.data.frame() %>%
-                rowSums()
-            
-        } else {
-            stop("Ni 'counts' ni 'relative_abundance' están disponibles en este objeto.")
-            
-        }
+        # Crear el gráfico si la ordenación es exitosa
+        p <- plot_ordination(tse_lp_phyloseq, iMDS, color = "Batch", shape = "Supervivencia") +
+             ggtitle(paste("MDS using distance method", i))
         
-        total_sum <- sum(row_sums)
-        
-        relative_abundance <- row_sums / total_sum
-        
-        data <- data.frame(
-            Taxon = rownames(assay(tse_ranking)),
-            Relative_Abundance = relative_abundance
-        )
-        
-        data$TSE <- names(lista_objetos_tse)[i]
-        
-        rownames(data) <- NULL
-        
-        if (nrow(abundancias_relativas) == 0){
-            
-            abundancias_relativas <- data
-            
-        } else {
-            abundancias_relativas <- rbind(abundancias_relativas, data)
-            
-        }
-        
-    }
-    
-    if (covariates == T) {
-        
-        
-        
-    }
-    
-    
-    return(abundancias_relativas)
-    
+        # Guardar el gráfico en la lista
+        plist[[i]] <- p
+    }, error = function(e) {
+        # Si ocurre un error, añade el método a la lista de fallos
+        failed_methods <<- c(failed_methods, i)
+        message(paste("Failed for distance method:", i))
+    })
 }
 
-abundancias_relativas_totales(list(tse_lp = tse_lp))
+# Muestra los métodos que fallaron al final del bucle
+failed_methods
 
+
+df = ldply(plist, function(x) x$data)
+names(df)[1] <- "distance"
+p = ggplot(df, aes(Axis.1, Axis.2, color=Batch, shape=Supervivencia))
+p = p + geom_point(size=3, alpha=0.5)
+p = p + facet_wrap(~distance, scales="free")
+p = p + ggtitle("MDS on various distance metrics for Enterotype dataset")
+p
 ```
 

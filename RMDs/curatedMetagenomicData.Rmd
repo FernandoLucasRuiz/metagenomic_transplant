@@ -59,6 +59,6 @@ tse_stool <- transformAssay(tse_stool, assay.type = "relabundance", method = "cl
 ```
 
 ```{r}
-save.image("../Rdatas/curatedMetagenomicData.RData")
+saveRDS(tse_stool, "../RDSs/tse_stool.RDS")
 ```
 

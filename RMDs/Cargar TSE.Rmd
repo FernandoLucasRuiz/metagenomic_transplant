@@ -23,8 +23,10 @@ knitr::opts_chunk$set(echo = T, warning = F, message = F)
 ```{r}
 source("Librerias.R")
 source("utils.R")
-load("../Rdatas/lectura_conteos.RData")
-load("../Rdatas/covariables_limpieza.RData")
+otus_lp_t1_t3 <- readRDS("../RDSs/otus_lp_t1_t3.RDS")
+otus_bilis <- readRDS("../RDSs/otus_bilis.RDS")
+otus_negative_controls <- readRDS("../RDSs/otus_negative_controls.RDS")
+covs <- readRDS("../RDSs/covs.RDS")
 ```
 
 
@@ -62,8 +64,8 @@ otus_negative_controls_combined <- dplyr::left_join(taxonomia_combinada_negative
 
 ```{r}
 abundance_table_negative_control <- otus_negative_controls_combined %>%
-        group_by(random_ids, codigo) %>%
-        summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
+        dplyr::group_by(random_ids, codigo) %>%
+        dplyr::summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
         ungroup() %>%
         pivot_wider(names_from = codigo, values_from = Count) %>%
         mutate_all(~replace_na(., 0))
@@ -83,6 +85,120 @@ samples_LP <- otus_lp_t1_t3_combined %>%
 
 pretse_LP <- prepare_TSE_data(samples_LP, covs)
 ```
+
+```{r}
+pretse_LP$abundance_table
+```
+
+
+## PCA
+
+```{r}
+# Realizar PCA en los datos ajustados
+pca <- prcomp(t(pretse_LP$abundance_table))
+pca_data <- as.data.frame(pca$x)
+pca_data$batch <- pretse_LP$samples_metadata$Batch
+
+pca_data$distancia <- sqrt(pca_data$PC1^2 + pca_data$PC2^2)
+muestra_lejana <- pca_data[which.max(pca_data$distancia), ]
+
+var_exp <- pca$sdev^2
+prop_var_exp <- var_exp / sum(var_exp)
+cum_var_exp <- cumsum(prop_var_exp)
+
+df_var_exp <- data.frame(Comp = 1:length(prop_var_exp), VarExp = prop_var_exp)
+df_cum_var_exp <- data.frame(Comp = 1:length(cum_var_exp), CumVarExp = cum_var_exp)
+
+# Graficar
+ggplot(pca_data, aes(x = PC1, y = PC2, color = batch)) +
+    geom_point(size = 3) +
+    labs(title = "PCA de datos ajustados por batch") +
+    ggrepel::geom_text_repel(
+        data = muestra_lejana,
+        aes(label = rownames(muestra_lejana)),
+        size = 5, color = "black", 
+    ) +
+    labs(x = paste("PC1", round(df_var_exp[1,2], 4) * 100, "%"),
+         y =  paste("PC1", round(df_var_exp[2,2], 4) * 100, "%")
+         ) +
+    theme_minimal()
+```
+```{r}
+pretse_LP$tax["fkq8zsxmhdse3oa3",]
+```
+
+```{r}
+
+coord <- as.data.frame(pca$rotation[rownames(pca$rotation) == "fkq8zsxmhdse3oa3", , drop = FALSE])
+factoextra::fviz_pca_biplot(pca) +
+   annotate(
+      "text",
+      x = 50000000,
+      y = -75000000,
+      label = "Streptococcus salivarus",
+      size = 5,
+      color = "black"
+    )
+
+
+```
+
+```{r}
+pretse_LP$samples_metadata <- pretse_LP$samples_metadata[rownames(pretse_LP$samples_metadata) != "4_Alb",]
+pretse_LP$abundance_table <- pretse_LP$abundance_table[, colnames(pretse_LP$abundance_table) != "4_Alb"]
+```
+
+```{r}
+# Realizar PCA en los datos ajustados
+pca <- prcomp(t(pretse_LP$abundance_table))
+pca_data <- as.data.frame(pca$x)
+pca_data$batch <- pretse_LP$samples_metadata$Batch
+
+pca_data$distancia <- sqrt(pca_data$PC1^2 + pca_data$PC2^2)
+muestra_lejana <- pca_data[which.max(pca_data$distancia), ]
+
+var_exp <- pca$sdev^2
+prop_var_exp <- var_exp / sum(var_exp)
+cum_var_exp <- cumsum(prop_var_exp)
+
+df_var_exp <- data.frame(Comp = 1:length(prop_var_exp), VarExp = prop_var_exp)
+df_cum_var_exp <- data.frame(Comp = 1:length(cum_var_exp), CumVarExp = cum_var_exp)
+
+# Graficar
+ggplot(pca_data, aes(x = PC1, y = PC2, color = batch)) +
+    geom_point(size = 3) +
+    labs(title = "PCA de datos ajustados por batch") +
+    labs(x = paste("PC1", round(df_var_exp[1,2], 4) * 100, "%"),
+         y =  paste("PC1", round(df_var_exp[2,2], 4) * 100, "%")
+         ) +
+    theme_minimal()
+```
+
+```{r}
+pretse_LP$tax["ilhgosw8fgdjqhcn",]
+pretse_LP$tax["vyo837eegbpww",]
+```
+
+```{r}
+factoextra::fviz_pca_biplot(pca) +
+       annotate(
+          "text",
+          x = 50000000,
+          y = -35000000,
+          label = "Micrococcus lylae",
+          size = 5,
+          color = "black"
+        ) +
+       annotate(
+          "text",
+          x = 80000000,
+          y = 35000000,
+          label = "Flavobacterium succinicans",
+          size = 5,
+          color = "black"
+        )
+```
+
 
 ## Quitar contaminación
 
@@ -173,12 +289,85 @@ Plot_PCoA(TAX=taxa_corrected_salida$tax_final, factor=batchid_LP, main="ConQuR (
 Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, dissimilarity="Aitch", main="Before Correction, Aitchison")
 Plot_PCoA(TAX=taxa_corrected_salida$tax_final, factor=batchid_LP, dissimilarity="Aitch", main="ConQuR (Default), Aitchison")
 
+
+```
+
+```{r,warning=FALSE}
+PERMANOVA_R2(taxa_LP, batchid_LP, covar_salida)
+adonis2(taxa_LP ~ pretse_LP$samples_metadata$Batch)
+adonis2(taxa_LP ~ pretse_LP$samples_metadata$Supervivencia)
+
+PERMANOVA_R2(taxa_corrected_salida$tax_final, batchid_LP, covar_salida)
+adonis2(taxa_corrected_salida$tax_final ~ pretse_LP$samples_metadata$Batch)
+adonis2(taxa_corrected_salida$tax_final ~ pretse_LP$samples_metadata$Supervivencia)
 ```
 
 ```{r}
-PERMANOVA_R2(taxa_LP, batchid_LP, covar_salida)
-PERMANOVA_R2(taxa_corrected_salida$tax_final, batchid_LP, covar_salida)
+library(phyloseq)
+# Asegúrate de que assay es una matriz
+otu_table_data <- otu_table(t(taxa_corrected_salida$tax_final), taxa_are_rows = TRUE)
 
+# Asegúrate de que rowData es un data.frame y conviértelo en una tax_table
+tax_table_data <- tax_table(as.matrix(as.data.frame(pretse_LP$tax)))
+
+# Crea el objeto phyloseq
+tse_phyloseq <- phyloseq(otu_table_data, tax_table_data)
+
+sample_data(tse_phyloseq) <- sample_data(as.data.frame(pretse_LP$samples_metadata))
+
+library(tidyr)
+
+# Convertir sample_data a data.frame, aplicar drop_na y reasignarlo
+filtered_sample_data <- data.frame(sample_data(tse_phyloseq)) %>%
+    drop_na(Batch, Supervivencia)
+
+# Reasignar el sample_data filtrado al objeto phyloseq
+sample_data(tse_phyloseq) <- sample_data(filtered_sample_data)
+
+```
+
+```{r, fig.width=20, fig.height=20, warning=FALSE}
+dist_methods <- unlist(distanceMethodList)
+# Remove them from the vector
+dist_methods <- dist_methods[-(1:3)]
+
+# Remove the user-defined distance
+dist_methods = dist_methods[-which(dist_methods=="ANY")]
+
+plist <- vector("list", length(dist_methods))
+names(plist) = dist_methods
+failed_methods <- c()  # Lista para almacenar los métodos que fallan
+
+for (i in dist_methods) {
+    # Intenta calcular la matriz de distancia y la ordenación con manejo de errores
+    tryCatch({
+        # Calcula la matriz de distancia
+        iDist <- distance(tse_phyloseq, method = i)
+        
+        # Calcula la ordenación (cambia "MDS" a "PCoA" si es necesario)
+        iMDS <- ordinate(tse_phyloseq, "MDS", distance = iDist)
+        
+        # Crear el gráfico si la ordenación es exitosa
+        p <- plot_ordination(tse_phyloseq, iMDS, color = "Batch", shape = "Supervivencia") +
+             ggtitle(paste("MDS using distance method", i))
+        
+        # Guardar el gráfico en la lista
+        plist[[i]] <- p
+    }, error = function(e) {
+        # Si ocurre un error, añade el método a la lista de fallos
+        failed_methods <<- c(failed_methods, i)
+        # message(paste("Failed for distance method:", i))
+    })
+}
+
+
+df = plyr::ldply(plist, function(x) x$data)
+names(df)[1] <- "distance"
+p = ggplot(df, aes(Axis.1, Axis.2, color=Batch, shape=Supervivencia))
+p = p + geom_point(size=3, alpha=0.5)
+p = p + facet_wrap(~distance, scales="free")
+p = p + ggtitle("MDS on various distance metrics for Enterotype dataset")
+p
 ```
 
 Para chequear que todos esta correcto
@@ -211,14 +400,14 @@ abundances_long <- pivot_longer(
 )
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     ggplot(aes(x = n_seqs)) +
     geom_histogram(bins= 100)
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               n_sings = sum(Abundance == 1),
               goods = 100*(1 - n_sings / n_seqs)) %>%
     ggplot(aes(x=n_seqs, y = goods)) +
@@ -226,14 +415,14 @@ abundances_long %>%
 
 
 min_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               min = min(n_seqs)) %>%
     pull(min)
 
 quantil1_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     pull(n_seqs) %>%            
     quantile(probs = 0.25)
 
@@ -362,28 +551,28 @@ abundances_long <- pivot_longer(
 )
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     ggplot(aes(x = n_seqs)) +
     geom_histogram(bins= 100)
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               n_sings = sum(Abundance == 1),
               goods = 100*(1 - n_sings / n_seqs)) %>%
     ggplot(aes(x=n_seqs, y = goods)) +
     geom_point()
 
 min_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               min = min(n_seqs)) %>%
     pull(min)
 
 quantil1_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     pull(n_seqs) %>%            
     quantile(probs = 0.25)
 
@@ -455,6 +644,159 @@ tse_t1 <- TreeSummarizedExperiment(
 
 ```
 
+# T3
+## Preparar datos
+
+```{r}
+samples_T3 <- otus_lp_t1_t3_combined %>%
+    dplyr::filter(tipo_muestra == "T3") 
+
+pretse_T3 <- prepare_TSE_data(samples_T3, covs)
+```
+
+## Quitar contaminación
+
+```{r}
+otu_combined <- merge(as.data.frame(pretse_T3$abundance_table), as.data.frame(abundance_table_negative_control), by = "row.names", all = TRUE)
+rownames(otu_combined) <- otu_combined$Row.names
+otu_combined$Row.names <- NULL
+
+# Reemplazar los valores NA por ceros en la matriz combinada
+otu_combined[is.na(otu_combined)] <- 0
+
+# Crear un vector que indique qué columnas son controles (TRUE = control, FALSE = muestra real)
+is_control <- c(rep(FALSE, ncol(as.data.frame(pretse_LP$abundance_table))), rep(TRUE, ncol(as.data.frame(abundance_table_negative_control))))
+
+# Usar decontam para identificar contaminantes basados en prevalencia
+contaminants_prev <- isContaminant(as.matrix(otu_combined), method = "prevalence", neg = is_control) %>%
+    filter(contaminant == TRUE & p < 0.05)
+
+head(contaminants_prev)
+```
+
+```{r}
+if (nrow(contaminants_prev) != 0){
+    pretse_T3$abundance_table <- pretse_T3$abundance_table %>% 
+        as.data.frame() %>%
+        select(-rownames(contaminants_prev))
+
+    pretse_T3$samples_metadata <- pretse_T3$samples_metadata[rownames(pretse_T3$samples_metadata) != rownames(contaminants_prev),] 
+}
+
+```
+
+## Profundidad de muestreo
+
+```{r}
+
+# Extraer la matriz de abundancias del objeto TSE
+abundances <- data.frame(t(pretse_T3$abundance_table))
+
+# Calcular la profundidad mínima
+abundances$sample <- rownames(abundances)
+
+abundances_long <- pivot_longer(
+  abundances, 
+  cols = -sample,  # Especificamos que las columnas de especies deben ser pivotadas
+  names_to = "Taxa",           # La nueva columna que contendrá los nombres de las especies
+  values_to = "Abundance"        # La nueva columna que contendrá los valores de abundancia
+)
+
+abundances_long %>% 
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
+    ggplot(aes(x = n_seqs)) +
+    geom_histogram(bins= 100)
+
+abundances_long %>% 
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
+              n_sings = sum(Abundance == 1),
+              goods = 100*(1 - n_sings / n_seqs)) %>%
+    ggplot(aes(x=n_seqs, y = goods)) +
+    geom_point()
+
+min_n_seqs <- abundances_long %>% 
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
+              min = min(n_seqs)) %>%
+    pull(min)
+
+quantil1_n_seqs <- abundances_long %>% 
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
+    pull(n_seqs) %>%            
+    quantile(probs = 0.25)
+
+abundances <- abundances %>% 
+    dplyr::select(-sample)
+
+# Crear curva de rarefacción con los datos originales
+rarecurve_data <- rarecurve(abundances, step=100, col="blue", label=T, cex=0.6)
+map_dfr(rarecurve_data, bind_rows) %>%
+    bind_cols(sample = rownames(abundances),.) %>%
+    pivot_longer(-sample) %>%
+    drop_na() %>%
+    mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
+    select(-name)%>%
+    ggplot(aes(x = n_seqs, y = value, group = sample)) +
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "T3")
+
+# Aplicar rarefacción real a las abundancias
+rarefied_abundances_T3 <- rrarefy(abundances, sample=quantil1_n_seqs)
+
+# (Opcional) Crear curva de rarefacción con los datos rarefactados
+rarecurve_rarefied_data <- rarecurve(rarefied_abundances_T3, step=100, col="blue", label=T, cex=0.6)
+map_dfr(rarecurve_rarefied_data, bind_rows) %>%
+    bind_cols(sample = rownames(abundances),.) %>%
+    pivot_longer(-sample) %>%
+    drop_na() %>%
+    mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
+    select(-name)%>%
+    ggplot(aes(x = n_seqs, y = value, group = sample)) +
+    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
+    geom_line() +
+    theme_minimal()+
+    labs(x= "number of species", y = "counts", title = "T3")
+
+pretse_T3$abundance_table <- t(rarefied_abundances_T3)
+```
+
+
+## Crear TSE
+
+```{r}
+# coldata rownames match assay colnames
+pretse_T3$samples_metadata <- pretse_T3$samples_metadata[match(colnames(pretse_T3$abundance_table), rownames(pretse_T3$samples_metadata)), ]
+all(rownames(pretse_T3$samples_metadata) == colnames(pretse_T3$abundance_table)) # our dataset
+##  [1] TRUE
+class(pretse_T3$samples_metadata) # should be data.frame or DataFrame
+##  [1] "data.frame"
+
+# rowdata rownames match assay rownames
+all(rownames(pretse_T3$tax) == rownames(pretse_T3$abundance_table)) # our dataset
+##  [1] TRUE
+class(pretse_T3$tax) # should be data.frame or DataFrame
+##  [1] "data.frame"
+
+# Counts
+class(pretse_T3$abundance_table) # should be a numeric matrix
+##  [1] "matrix" "array"
+```
+
+```{r}
+# Create a TreeSE
+tse_t3 <- TreeSummarizedExperiment(
+    assays =  SimpleList(counts = pretse_T3$abundance_table),
+    colData = DataFrame(pretse_T3$samples_metadata),
+    rowData = DataFrame(pretse_T3$tax))
+
+```
+
+
 # Bilis 
 
 ## preparar datos
@@ -481,14 +823,14 @@ abundances_long <- pivot_longer(
 )
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     ggplot(aes(x = n_seqs)) +
     geom_histogram(bins= 100)
 
 abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               n_sings = sum(Abundance == 1),
               goods = 100*(1 - n_sings / n_seqs)) %>%
     ggplot(aes(x=n_seqs, y = goods)) +
@@ -497,14 +839,14 @@ abundances_long %>%
 
 
 min_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance),
               min = min(n_seqs)) %>%
     pull(min)
 
 quantil1_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::summarize(n_seqs = sum(Abundance)) %>%
     pull(n_seqs) %>%            
     quantile(probs = 0.25)
 
@@ -578,8 +920,10 @@ tse_bilis <- TreeSummarizedExperiment(
 # Guardar datos
 
 ```{r}
-save.image("../Rdatas/cargar_tse.RData")
-
+saveRDS(tse_lp, "../RDSs/tse_lp.RDS")
+saveRDS(tse_t1, "../RDSs/tse_t1.RDS")
+saveRDS(tse_t3, "../RDSs/tse_t3.RDS")
+saveRDS(tse_bilis, "../RDSs/tse_bilis.RDS")
 ```
 
 

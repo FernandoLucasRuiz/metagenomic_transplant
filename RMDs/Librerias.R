@@ -41,6 +41,9 @@ library(grid)
 # DESEq2
 library(DESeq2)
 
+# Correlation plots
+library(corrplot)
+
 
 
 num_cores <- detectCores()

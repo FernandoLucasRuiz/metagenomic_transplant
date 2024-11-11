@@ -1,5 +1,5 @@
 ---
-title: "Higados desde SRA"
+title: "Bilis desde SRA 2"
 author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
 date: "`r Sys.Date()`"
 output:
@@ -28,9 +28,9 @@ source("Librerias.R")
 
 Para ello descargamos la accesion list del proyecto y los metadatos. El proyecto a descargar es: SRP377201.
 
-*"DNA from liver biopsies were extracted and Real-time polymerase chain reaction (qPCR) amplification was performed using 16S universal primers targeting the hypervariable V3-V4 region of the bacterial 16S ribosomal gene with a protocol carefully designed to minimize any risk of contamination between samples or from the experimenters, environment. The quality and quantity of extracted nucleic acids were controlled by gel electrophoresis and absorbance spectroscopy using a NanoDrop 2000 UV spectrophotometer. The qPCR was performed on a ViiA 7 PCR system using Sybr Green technology. The microbial populations based on rDNA present in liver samples were determined using next-generation high-throughput sequenced using the Illumina-MiSeq technology."*
+<https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SRP056183&o=assay_type_s%3Aa%3Bacc_s%3Aa&s=SRR1918902,SRR1920924,SRR1920926,SRR1920929,SRR1920932,SRR1920946,SRR1920953,SRR1920965,SRR1920967,SRR1920969,SRR1920972,SRR1920974,SRR1920980,SRR1920982>
 
-Para conseguir los fastq necesitamos la herramienta sra-toolkit (https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit). Una vez descargado, abrimos la terminal y ponemos:
+Para conseguir los fastq necesitamos la herramienta sra-toolkit (<https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit>). Una vez descargado, abrimos la terminal y ponemos:
 
 ```{bash, eval = FALSE}
 tar -xvzf {nombre_del_archivo}.tar.gz
@@ -54,7 +54,10 @@ cd ../../
 Luego movemos la accesion_list que la llamamos runs.txt al folder donde esta el sra-toolkit y ejecutamos el siguiente codigo para extraer los fastq
 
 ```{bash, eval = FALSE}
-while read accession; do prefetch $accession fasterq-dump $accession --split-files done < accessions.txt
+while read accession; do 
+    prefetch $accession
+    fasterq-dump $accession --split-files
+done < runs.txt
 
 ```
 
@@ -67,19 +70,61 @@ Lo primero de todo es crear el manifiesto en un archivo tsv. Al ser archivos par
 - forward-absolute-filepath
 - reverse-absolute-filepath
 
+```{bash, eval=F}
+#!/bin/bash
+
+# Directorio donde se encuentran los archivos de secuencia
+sequence_dir="/ruta/al/directorio/de/archivos"
+output_file="manifest.tsv"
+
+# Escribir el encabezado del manifiesto
+echo -e "sample-id\tforward-absolute-filepath\treverse-absolute-filepath" > "$output_file"
+
+# Iterar sobre los archivos forward en el directorio
+for forward_file in "$sequence_dir"/*_1.fastq; do
+    # Obtener el sample-id eliminando la parte '_1'
+    sample_id=$(basename "$forward_file" | sed 's/_1.*//')
+    
+    # Ruta absoluta del archivo forward
+    forward_path=$(realpath "$forward_file")
+    
+    # Obtener la ruta del archivo reverse reemplazando '_1' por '_2'
+    reverse_file="${forward_file/_1/_2}"
+    reverse_path=$(realpath "$reverse_file")
+    
+    # Añadir la línea al archivo de manifiesto
+    echo -e "$sample_id\t$forward_path\t$reverse_path" >> "$output_file"
+done
+
+echo "Manifiesto generado en $output_file"
+```
+
+```{bash, eval = F}
+chmod +x manifest.sh
+./manifest.sh
+```
+
+Ahora activamos qiime
+
+```{bash, eval =F}
+conda env list
+conda activate ...
+```
+
+
 Una vez tengamos el manifiesto generamos una carpeta nueva llamada qiime y nos metemos. Ejecutamos el siguiente codigo para importarlo a qiime:
 
 ```{bash, eval = FALSE}
 qiime tools import \
   --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path ../fastq/corrected_manifest.tsv \
+  --input-path manifest.tsv \
   --output-path paired-end-demux.qza \
   --input-format PairedEndFastqManifestPhred33V2
 ```
 
 ```{bash, eval = FALSE}
 qiime demux summarize \
-  --i-data paired-end-demux.qza \ 
+  --i-data paired-end-demux.qza \
   --o-visualization paired-end-demux.qzv 
 ```
 
@@ -87,7 +132,7 @@ Deblur en un primer paso realiza un filtrado de calidad basado en los quality sc
 
 ```{bash, eval = FALSE}
 qiime quality-filter q-score \
- --i-demux paired-end-demux.qza \   
+ --i-demux paired-end-demux.qza \
  --o-filtered-sequences demux-filtered.qza \
  --o-filter-stats demux-filter-stats.qza
 ```
@@ -102,7 +147,7 @@ qiime deblur denoise-16S \
   --o-stats deblur-stats.qza
 ```
 
-Las estadísticas las pasamos a tabla para poder visualizar los resultados (https://view.qiime2.org/)
+Las estadísticas las pasamos a tabla para poder visualizar los resultados (<https://view.qiime2.org/>)
 
 ```{bash, eval = F}
 qiime metadata tabulate \
@@ -131,14 +176,14 @@ qiime diversity core-metrics-phylogenetic \
   --i-phylogeny rooted-tree.qza \
   --i-table table.qza \
   --p-sampling-depth 1103 \
-  --m-metadata-file ../metadata.tsv \
+  --m-metadata-file metadata.tsv \
   --output-dir core-metrics-results
 ```
 
 ```{bash, eval = F}
  qiime diversity alpha-group-significance \
  --i-alpha-diversity core-metrics-results/shannon_vector.qza \
- --m-metadata-file ../metadata.tsv \
+ --m-metadata-file metadata.tsv \
  --o-visualization core-metrics-results/shannon-group-significance.qzv 
 ```
 
@@ -147,7 +192,7 @@ qiime diversity alpha-rarefaction \
   --i-table table.qza \
   --i-phylogeny rooted-tree.qza \
   --p-max-depth 4000 \
-  --m-metadata-file ../metadata.tsv \
+  --m-metadata-file metadata.tsv \
   --o-visualization alpha-rarefaction.qzv
 ```
 
@@ -166,7 +211,7 @@ qiime metadata tabulate \
 qiime taxa barplot \
   --i-table table.qza \
   --i-taxonomy taxonomy.qza \
-  --m-metadata-file ../metadata.tsv \
+  --m-metadata-file metadata.tsv \
   --o-visualization taxa-bar-plots.qzv
 ```
 
@@ -177,7 +222,7 @@ echo "Exportar tabla de conteos a formato biom"
 qiime tools extract --input-path table.qza --output-path exports
 
 echo "Convertir fichero biom a tsv"
-biom convert -i exports/8f3a3c1c-4c8f-4c71-b778-805b1fa5ccef/data/feature-table.biom -o exports/8f3a3c1c-4c8f-4c71-b778-805b1fa5ccef/data/feature-table.tsv --to-tsv
+biom convert -i exports/14e19092-8aef-4054-9396-bc264b1fbb86/data/feature-table.biom -o exports/14e19092-8aef-4054-9396-bc264b1fbb86/data/feature-table.tsv --to-tsv
 
 echo "Convertir taxonomía a tsv"
 qiime tools export --input-path taxonomy.qza --output-path exports
@@ -190,14 +235,14 @@ qiime tools export --input-path rooted-tree.qza --output-path exports
 
 ```{r}
 
-otutable <- read.table("../SRP377201_Liver/qiime/exports/8f3a3c1c-4c8f-4c71-b778-805b1fa5ccef/data/feature-table.tsv", sep = "\t", header = T, skip = 1, comment.char = "")
+otutable <- read.table("../Bilis_SRA2/exports/14e19092-8aef-4054-9396-bc264b1fbb86/data/feature-table.tsv", sep = "\t", header = T, skip = 1, comment.char = "")
 otutable <- otutable %>% column_to_rownames(var = "X.OTU.ID")
 
-sampleData <- read.table("../SRP377201_Liver/metadata.tsv", sep="\t", header = T)
-sampleData <- sampleData %>% column_to_rownames(var = "sampleid")
+sampleData <- read.table("../Bilis_SRA2/metadata.tsv", sep="\t", header = T)
+sampleData <- sampleData %>% dplyr::filter(Sampleid != "SRR1920982") %>% column_to_rownames(var = "Sampleid")
 
 
-taxonomy <- read.table("../SRP377201_Liver/qiime/exports/taxonomy.tsv", sep = "\t", header = T)
+taxonomy <- read.table("../Bilis_SRA2/exports/taxonomy.tsv", sep = "\t", header = T)
 taxonomy <- taxonomy %>% column_to_rownames(var = "Feature.ID") %>% select(-Confidence)
 
 taxaMatrix <- taxonomy %>% mutate(Taxon = gsub("[a-z]__","", Taxon) ) %>% 
@@ -211,8 +256,6 @@ taxaMatrix <- taxaMatrix %>%
 nrow(sampleData)
 
 ```
-
-
 
 # Cargar tse
 
@@ -284,21 +327,18 @@ abundances_long %>%
 
 ```{r}
 min_n_seqs <- abundances_long %>% 
-    dplyr::filter(sample != "SRR19415858") %>%
     group_by(sample) %>%
     summarize(n_seqs = sum(Abundance),
               min = min(n_seqs)) %>%
     pull(min)
 
 quantil1_n_seqs <- abundances_long %>% 
-    dplyr::filter(sample != "SRR19415858") %>%
     group_by(sample) %>%
     summarize(n_seqs = sum(Abundance)) %>%
     pull(n_seqs) %>%            
     quantile(probs = 0.25)
 
 abundances <- abundances %>% 
-    dplyr::filter(sample != "SRR19415858") %>%
     dplyr::select(-sample)
 
 # Crear curva de rarefacción con los datos originales
@@ -335,7 +375,6 @@ map_dfr(rarecurve_rarefied_data, bind_rows) %>%
 
 ```{r}
 otutable <- t(rarefied_abundances)
-sampleData <- sampleData[rownames(sampleData) != "SRR19415858", ]
 
 # Ordena las columnas de otutable según el orden de las filas de sampleData
 otutable <- otutable[, order(match(colnames(otutable), rownames(sampleData)))]
@@ -368,17 +407,14 @@ class(otutable) # should be a numeric matrix
 
 ```{r}
 # Create a TreeSE
-tse_higado_sra <- TreeSummarizedExperiment(
+tse_bilis_sra2 <- TreeSummarizedExperiment(
     assays =  SimpleList(counts = otutable),
     colData = DataFrame(sampleData),
     rowData = DataFrame(taxaMatrix))
 ```
 
-
-
-
 # Guardar datos
 
 ```{r}
-saveRDS(tse_higado_sra, "../RDSs/tse_higado_sra.RDS")
+saveRDS(tse_bilis_sra2, "../RDSs/tse_bilis_sra2.RDS")
 ```

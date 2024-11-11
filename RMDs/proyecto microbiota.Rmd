@@ -22,6 +22,8 @@ Tenemos un análisis metagenómico de 114 pifspo de pacientes. De esos pacientes
 
 Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez allí hice el análisis completo para extraer conteos mediante la propia web ya que Fernando de Bioinformática me dijo que era lo que solian hacer ellos con las secuenciaciones de IonTorrent. Seguí el workflow que daba la opción en la web para metagenómica de 16S. Me descargué los datos a R para realizar el análisis completo.
 
+Documento de analisis de IonReporter [chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://assets.thermofisher.com/TFS-Assets/LSG/Vector-Information/ion-reporter-16s-metagenomics-algorithms-whitepaper.pdf](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://assets.thermofisher.com/TFS-Assets/LSG/Vector-Information/ion-reporter-16s-metagenomics-algorithms-whitepaper.pdf){.uri}
+
 ------------------------------------------------------------------------
 
 # To do
@@ -68,10 +70,6 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
 -   [x] Mirar contaminación
 
--   [ ] alpha diversidad entre ellas lp y t1 por pairwise
-
--   [ ] correlacionar alpha diversidad con covariables?
-
 -   [x] Programa para buscar mejor combinación de conqur
 
 -   [x] Probar otros paquetes
@@ -97,12 +95,6 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 -   [x] Ver impacto rarified para mitigar impacto de lectura? aprender del tema
 
 -   [x] DESeq2 entre variables de salida con los reinos
-
--   [ ] Community diversity
-
-    -   [ ] Ver comparativas de LP
-
-    -   [ ] LP con las demás
 
 -   [ ] Community similarity
 
@@ -146,23 +138,7 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [ ] ZicoSeq
 
--   [ ] Alpha diversity
-
-    -   [ ] DESeq2
-
-        -   [ ] Variables de salida
-
-            -   [ ] Venn diagram
-
-        -   [ ] Variables donante
-
-            -   [ ] Venn diagram
-
-        -   [ ] Variables receptor?
-
-    -   [ ] Correlation
-
--   [ ] Correlation
+-   [ ] Correlation (MaAsLin2?)
 
     -   [ ] Association between taxa
 
@@ -172,13 +148,31 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
 -   [ ] Selección variables metadata (Tema 7 machine learning)
 
+-   [x] Bilis SRA
+
+    -   [x] <https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SRP227334&o=acc_s%3Aa>
+
+    -   [x] <https://www.ncbi.nlm.nih.gov/Traces/study/?acc=SRP056183&o=assay_type_s%3Aa>
+
 -   [ ] T1 vs T3
 
     -   [ ] Relative abundance
 
     -   [ ] DESEq2
 
--   [ ] Bilis SRA
+-   [x] Ajustar por cofoundings (edad, sexo, etc)
+
+    -   [x] Mirar permanova primero
+
+-   [ ] Hacer alineamiento con fastq
+
+    -   [ ] calidad
+
+    -   [ ] abundancia relativa
+
+    -   [ ] batch effect
+
+-   [ ] 
 
 ------------------------------------------------------------------------
 
@@ -200,6 +194,8 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [ ] <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9515207/>
 
+    -   [x] <https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009442>
+
 -   liver AND metagenomic
 
     -   [x] REvision liver gut microbiota. <https://pubmed.ncbi.nlm.nih.gov/31657225/>
@@ -218,7 +214,7 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [ ] <https://pubmed.ncbi.nlm.nih.gov/29942096/>
 
--   metagenomic AND machine learning
+-   (metagenomic OR microbiota) AND (machine learning OR deep learning OR prediction)
 
     -   [x] [Prediccion cirrosis <https://pubmed.ncbi.nlm.nih.gov/32610095/>]{.underline}
 
@@ -232,7 +228,7 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [x] <https://pubmed.ncbi.nlm.nih.gov/36699735/>
 
-    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/38977906/>
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/38977906/>
 
     -   [ ] <https://pubmed.ncbi.nlm.nih.gov/37821698/>
 
@@ -240,7 +236,13 @@ Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez all
 
     -   [ ] <https://pubmed.ncbi.nlm.nih.gov/37594964/>
 
-    -   [ ]
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/39458350/>
+
+    -   [ ] <https://www.mdpi.com/2227-9059/12/10/2350>
+
+    -   [ ] Mirar analisis <https://pubmed.ncbi.nlm.nih.gov/39507947/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/39500537/>
 
 -   [ ] (metagenomic OR microbiota) AND (liver OR hepatic) NOT (gut OR stool OR intestinal)
 
@@ -385,7 +387,7 @@ Estoy probando distintas combinaciones de Runs y de muestras para ver cual es la
 He hecho un programa para recoger todas la información de cada muestra con cada RUN y cada variable
 
 | NO mejora ninguna variable en ningun run. El mejor reduccion de batch es un 4.2 o 3.9 |
-|---------------------------------------------------------------------------------------|
+|------------------------------------------------------------------------|
 
 Voy a seguir con las combinaciones de donante filtrado para ver la mejor posible combinación con todas las muestras
 
@@ -537,3 +539,161 @@ DESEq2
 ![](images/clipboard-3757460327.png)
 
 ![](images/clipboard-3208161689.png)
+
+## 2024-
+
+### Covariables
+
+Voy a mirar las correlaciones entre covariables. Para ello voy a utilizar distintas correlaciones dependiendo de la clase de la variable:
+
+-   numerica-numerica: correlacion de spearman
+
+-   categórica-categórica: test de Cramér's V en tablas de contingencia con test chi cuadrado con corrección
+
+-   categorica-numerica: punto biserial con correlacion de pearson
+
+en el cuadrado se indica el analisis categorica-categórica que va de 0 a 1 y no se sabe si tiene relación positiva o negativa. 0 sería sin correlación y 1 mucha correlación.
+
+![](images/clipboard-3881771673.png)
+
+Vemos que hay unas relaciones muy fuertes entre machine y donacion y NRP_total porque se repiten los datos. Decido quitar Donación y NRP_total
+
+![](images/clipboard-913507189.png)
+
+### Ajuste por efecto de covariables
+
+Lo primero de todo vamos a ver qué covariables son importantes a la hora de separar los datos metagenómicos. Para ello vamos a hacer un analisis de redundancia y calcular la varianza explicada en cada caso con PERMANOVA.
+
+-   Probar primero con todas las variables juntas en la formula
+
+|  |
+|------------------------------------------------------------------------|
+| Parece que no hay efecto en ninguna variable con PERMANOVA con p\< 0.05 pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
+
+![](images/clipboard-2829566327.png)
+
+-   Probar con las variables por separado en la formula
+
+|  |
+|------------------------------------------------------------------------|
+| Lo mismo. Parece que no hay efecto en ninguna variable pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
+
+Sigue habiendo muchisimo efecto en el BATCH!!!!!!!! :(
+
+Voy a probar a hacer el ConQuR con las abundancias relativas a ver qué sale. Pruebo fine tunning automático con covariables de salida.
+
+|  |
+|------------------------------------------------------------------------|
+| No es buena idea porque parece que agrupa muchisimo al RUN de referencia y los saca |
+
+![](images/clipboard-2483119552.png)
+
+![](images/clipboard-4038399169.png)
+
+Si lo comparamos con la anterior de conqur con los conteos vemos que separa mejor
+
+![](images/clipboard-2289336037.png)
+
+Voy a probar con ComBat:
+
+Al hacer la PCA con los datos otus crudos vemos que hay una muestra que se va por completo.
+
+![](images/clipboard-321963867.png)
+
+![](images/clipboard-2726254033.png)
+
+Vamos a quitar la muestra 4_Alb porque parece contaminada con una bacteria de la saliva.
+
+![](images/clipboard-1242493412.png)
+
+***Micrococcus lylae*** is a gram positive bacterium. The normal habitat for this Micrococcus species is skin, dust, and water
+
+En particular, no se asocia ampliamente a *Flavobacterium succinicans* con patogenicidad en humanos, y su importancia es más ecológica y funcional en procesos de descomposición de materia orgánica.
+
+![](images/Captura%20de%20pantalla%202024-11-06%20a%20las%2013.05.40.png)
+
+Voy a probar ahora con MaAsLin2:
+
+-   Primero lo que hago es hacer el modelo con solamente el efecto de batch para coger los residuos
+
+SVA: Lo he probado y parece que hay que quitar los taxones que tienen varianza 0
+
+### Desde fastq
+
+El archivo se llama lectura conteos_fastq
+
+Lo hago por manifiesto singleEnd. En lugar de utilizar dblur voy a utilizar DADA2 porque funciona mejor con las secuenciaciones de ionReporter según *Catozzi C, Cuscó A, Lecchi C, Carlo ED, Vecchio D, Martucciello A, D’Angelo L, Francino O, Bonastre AS, Ceciliani F (2019) Impact of intramammary inoculation of inactivated Lactobacillus rhamnosus and antibiotics on the milk microbiota of water buffalo with subclinical mastitis. PLoS ONE 14(1): e0210204. \<<https://doi>: 10.1371/journal.pone.0210204\>*
+
+Existen dos estrategias para calcular la diversidad de una muestra. Mediante Unidades Taxonómicas Operativas (OTUs) o mediante inferencia de Variantes de Secuencia de Amplicones (ASVs). Las OTUs se agrupan por similitud de secuencia, generalmente con un umbral del 97%, lo que significa que las secuencias que son al menos un 97% similares se consideran la misma OTU. Las ASVs no se agrupan por similitud; cada variante única de secuencia se trata como una entidad distinta.
+
+Según el manual de deblur de QIIME2, que genera OTUs, este comando está diseñado específicamente para datos generados a partir de protocolos de amplicones 16S en plataformas Illumina: “This mode of operation should only be used when data were generated from a 16S amplicon protocol on an Illumina platform”. Siguiendo las recomendaciones de Catozzi et al. y diversas fuentes en blogs, se aconseja emplear la herramienta DADA2 para este proceso. A diferencia del método tradicional que genera OTUs, DADA2 permite la creación de ASVs, que proporcionan una resolución taxonómica más precisa. Para implementar esto, ejecutamos lo siguiente:
+
+![](images/Captura%20de%20pantalla%202024-11-08%20a%20las%2011.21.15.png)
+
+filtramos por las primeras 300 secuencias
+
+Hago el clasificador de las ASV con silva-138-99-nb-classifier.qza
+
+Cuando miro las especies que hay en cada muestra casi todas tiene 0 secuencias... puede ser que sea por culpa del clasificador silva. Voy a probar con el clasificador de greengenes 2024.09.backbone.full-length.nb.qza
+
+![](images/clipboard-1225086023.png)
+
+Pasa lo mismo...
+
+![](images/clipboard-2415664598.png)
+
+Voy a probar trimeando con 400 y con greengenes 2024.
+
+![](images/clipboard-3618726910.png)
+
+Vale, me estaba equivocando cuando ponia --p-trunc-len. Lo voy a poner a 0 para no truncar. y con el de greengenes porque parece que es mejor: "*La elección entre los clasificadores 2024.09.backbone.full-length.nb.qza y silva-138-99-nb-classifier.qza depende de varios factores relacionados con tu proyecto de análisis de secuencias. A continuación, se presentan las características de cada uno para ayudarte a tomar una decisión informada:*
+
+1.  *2024.09.backbone.full-length.nb.qza (Greengenes2):*
+
+*Actualización Reciente: Este clasificador forma parte de la versión 2024.09 de Greengenes2, una actualización reciente que incorpora datos actuales y mejoras en la taxonomía. Cobertura de Secuencias: Está diseñado para clasificar secuencias de longitud completa del gen 16S rRNA, lo que puede ser beneficioso si tus secuencias abarcan la totalidad o la mayor parte de este gen. Optimización para ASVs: Greengenes2 ha sido optimizado para trabajar con Amplicon Sequence Variants (ASVs), ofreciendo una clasificación más precisa en comparación con versiones anteriores.*
+
+*2. silva-138-99-nb-classifier.qza (SILVA):*
+
+*Base de Datos Amplia: SILVA es reconocida por su extensa base de datos y cobertura taxonómica detallada, lo que puede ser ventajoso para identificar una amplia variedad de microorganismos. Actualizaciones Frecuentes: La versión 138-99 es una de las más recientes, asegurando que la información taxonómica esté actualizada. Versatilidad: Es adecuado para diversas regiones del gen 16S rRNA y ha sido ampliamente utilizado en la comunidad científica. Consideraciones para la Elección:*
+
+*Compatibilidad con tus Datos: Si tus secuencias son de longitud completa y buscas una base de datos actualizada, 2024.09.backbone.full-length.nb.qza podría ser más adecuado. Cobertura Taxonómica: Si requieres una cobertura taxonómica más amplia y detallada, especialmente para regiones específicas del gen 16S rRNA, silva-138-99-nb-classifier.qza podría ser la mejor opción. Consistencia con Estudios Previos: Considera qué base de datos han utilizado estudios anteriores en tu campo para mantener la consistencia y comparabilidad de los resultados. En resumen, ambos clasificadores tienen sus fortalezas. La elección dependerá de las características específicas de tus datos y de los objetivos de tu análisis."*
+
+Mejora pero tengo problemas en la nomenclatura de los taxones.
+
+![](images/clipboard-3684314924.png)
+
+![](images/clipboard-794004425.png)
+
+Probar con SILVA a ver qué tal.
+
+![![](images/clipboard-789356993.png)](images/clipboard-1565209.png)
+
+![](images/clipboard-2022747181.png)
+
+No parece muy bueno utilizar SILVA
+
+Vale, he encontrado este foro que hablan del tema \<<https://forum.qiime2.org/t/possible-analysis-pipeline-for-ion-torrent-16s-metagenomics-kit-data-in-qiime2/13476/80>\>
+
+Se utiliza qiime dada2 denoise-pyro y luego vsearch para ver la taxonomia. :
+
+qiime dada2 denoise-pyro\
+--i-demultiplexed-seqs demux.qza\
+--p-trim-left 15\
+--p-trunc-len 0\
+--p-max-len 450\
+--p-n-threads 0\
+--o-table table.qza\
+--o-representative-sequences rep-seqs.qza\
+--o-denoising-stats denoising-stats.qza
+
+qiime feature-classifier classify-consensus-vsearch\
+--i-query rep-seqs.qza\
+--i-reference-reads 2024.09.seqs.fna.qza\
+--i-reference-taxonomy 2024.09.taxonomy.asv.tsv.qza\
+--p-perc-identity 0.97\
+--o-search-results taxonomy.qza\
+--o-classification BLAST6.qza
+
+<https://ftp.microbio.me/greengenes_release/2024.09/> de aqui descargo la taxonomia y las secuencias.
+
+Tarda mucho (+3h)

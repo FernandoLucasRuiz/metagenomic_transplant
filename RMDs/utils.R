@@ -57,8 +57,8 @@ plotear_conqur <- function(pathway_taxa_corrected, objeto_taxa, objeto_batchid){
 
  prepare_TSE_data <- function(OTU_table, metadata){
     abundance_table <- OTU_table %>%
-        group_by(random_ids, codigo) %>%
-        summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
+        dplyr::group_by(random_ids, codigo) %>%
+        dplyr::summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
         ungroup() %>%
         pivot_wider(names_from = codigo, values_from = Count) %>%
         mutate_all(~replace_na(., 0))
@@ -213,9 +213,83 @@ abundancias_relativas_totales <- function(lista_objetos_tse, ranking, top = 10){
         
     }
     
+    top_taxones <- abundancias_relativas %>%
+        group_by(TSE) %>%
+        arrange(desc(Relative_Abundance)) %>%
+        slice_head(n = top) %>%
+        pull(Taxon)
+    
+    # Renaming the "Phylum" rank to keep only top taxa and the rest to "Other"
+    taxa_renamed <- lapply(abundancias_relativas$Taxon, function(x){
+        if (x %in% top_taxones) {x} else {"Other"}
+    })
+    
+    abundancias_relativas$taxa_sub <- as.character(taxa_renamed)
+    
     return(abundancias_relativas)
     
 }
+
+
+
+# Plotear abundancias relativas en pie chart
+
+plotear_abundancia_relativa <- function(objeto_abundancias, titulo) {
+    
+    p <- ggplot(objeto_abundancias, aes(x = 1, y = Relative_Abundance, fill= taxa_sub)) +
+        geom_bar(stat = "identity") +
+        scale_fill_paletteer_d("ggthemes::Tableau_20") + 
+        labs(title = paste0(titulo, " Relative Abundance"), x = "Taxons", y = "Relative Abundance") +
+        theme_minimal() +
+        theme(axis.text.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.title.y = element_blank(),
+              legend.title = element_blank(),
+              legend.position = "bottom",  # Posiciona la leyenda abajo
+              legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+              plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+              #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) +
+        coord_polar("y", start = 0) +
+        facet_wrap(~TSE, nrow = 1) 
+    
+    return(p)
+    
+}
+
+
+#plotear_diferencias_relabundance
+plotear_diferencias_relabundance <- function(objeto_tse, taxa, covariable) {
+    
+    tse_filtrado <- agglomerateByRank(objeto_tse, taxa)
+    
+    relabundance <- as.data.frame(t(assay(tse_filtrado, "relabundance"))) %>% 
+        rownames_to_column(var = "sample")
+    
+    covariates <- colData(tse_filtrado) %>%
+        as.data.frame() %>%
+        rownames_to_column(var = "sample")
+    
+    p <- dplyr::left_join(relabundance, covariates, by = "sample") %>%
+        dplyr::select(intersect(names(.), names(relabundance)), all_of(covariable), -sample) %>%
+        pivot_longer(-all_of(covariable), names_to = "Taxon", values_to = "Abundance") %>%
+        ggplot(aes_string(x=covariable, y="Abundance", fill = "Taxon")) +
+        geom_boxplot() +
+        geom_jitter(aes_string(x=covariable, y="Abundance"), size = 0.5) +
+        labs(title = paste("Relative Abundance at", taxa, "level"),
+             x = covariable, 
+             y = "Relative Abundance") +
+        theme(
+            axis.title.y = element_blank(),
+            legend.title = element_blank(),
+            legend.position = "none"
+        ) +
+        scale_y_log10() +
+        facet_wrap(~ reorder(Taxon, -Abundance))
+    
+    return(p)
+}
+
 
 
 

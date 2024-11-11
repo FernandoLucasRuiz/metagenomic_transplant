@@ -243,7 +243,9 @@ otus_negative_controls$tipo_muestra <- "Negative_control"
 # Guardar datos
 
 ```{r}
-save.image("../Rdatas/lectura_conteos.RData")
+saveRDS(otus_lp_t1_t3, "../RDSs/otus_lp_t1_t3.RDS")
+saveRDS(otus_bilis, "../RDSs/otus_bilis.RDS")
+saveRDS(otus_negative_controls, "../RDSs/otus_negative_controls.RDS")
 ```
 
 

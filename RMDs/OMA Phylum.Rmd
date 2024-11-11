@@ -203,8 +203,8 @@ covariates_lp <- colData(tse_lp_phylum) %>%
 dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
     dplyr::select(intersect(names(.), names(counts_lp)), Supervivencia, -sample) %>%
     pivot_longer(-Supervivencia, names_to = "Taxon", values_to = "Abundance") %>%
-    group_by(Supervivencia, Taxon) %>%
-    summarize(suma = sum(Abundance)) %>%
+    dplyr::group_by(Supervivencia, Taxon) %>%
+    dplyr::summarize(suma = sum(Abundance)) %>%
     group_by(Supervivencia) %>%
     mutate(suma_condition = sum(suma),
            relative_abundance = suma / suma_condition) %>%
@@ -1373,7 +1373,7 @@ La riqueza mide el número de especies presentes en la comunidad, sin tener en c
 23. **`observed_richness`**: Es simplemente el número de especies observadas en la muestra, sin ajustar por especies no observadas o cobertura de muestreo.
 
 ```{r, fig.height=8, fig.width=10}
-do.call(grid.arrange, c(plots[19:20], ncol=2))
+do.call(grid.arrange, c(plots, ncol=2))
 ```
 
 # Community dissimilarity
@@ -1398,7 +1398,7 @@ tse_lp <- runMDS(
 
 # Create ggplot object
 p <- plotReducedDim(tse_lp, "MDS_bray", 
-                    colour_by = "Supervivencia"
+                    colour_by = "Batch"
                     )
 colData(tse_lp)
 # Calculate explained variance
@@ -1445,7 +1445,7 @@ plots <- lapply(
     c("MDS_bray", "MDS_aitchison", "NMDS_bray", "NMDS_aitchison"),
     plotReducedDim,
     object = tse_lp,
-    colour_by = "Supervivencia"
+    colour_by = "Batch"
     )
 
 # Generate multi-panel plot
@@ -1488,7 +1488,7 @@ pca <- as.data.frame(pca_result_df$x, stringsAsFactors=F)
 pca <- cbind(samples_metadata_LP[,], pca[,1:20])
 
 
-ggplot(pca, aes(x = PC1, y = PC2, color = Supervivencia)) +
+ggplot(pca, aes(x = PC1, y = PC2, color = Batch)) +
     geom_point() +
     xlab("PC 1 ") +
     ylab("PC 2")+
@@ -1506,7 +1506,7 @@ fviz_pca_ind(pca_result_df,
                 col.var = "cos2",
                 #col.ind = "cos2",
                 #gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-                repel = F, addEllipses = T, habillage = colData(tse_lp)$Exitus
+                repel = F, addEllipses = T, habillage = colData(tse_lp)$Batch
                 )
 ```
 
@@ -1523,7 +1523,7 @@ tsne.data <- as.data.frame(tsne$Y)
 tsne.data$nombre_muestra <- samples_metadata_LP$nombre_muestra
 tsne.data.covs <- merge(tsne.data, samples_metadata_LP, by = "nombre_muestra")
 
-ggplot(tsne.data.covs, aes(x = V1, y = V2, color = Supervivencia)) +
+ggplot(tsne.data.covs, aes(x = V1, y = V2, color = Batch)) +
     geom_point() +
     theme_minimal()
 ```
@@ -1542,7 +1542,7 @@ umap.data <- as.data.frame(df_umap$layout)
 umap.data$nombre_muestra <- samples_metadata_LP$nombre_muestra
 umap.data.covs <- merge(umap.data, samples_metadata_LP, by = "nombre_muestra")
 
-ggplot(umap.data.covs, aes(x=V1, y=V2, color = Exitus)) +  
+ggplot(umap.data.covs, aes(x=V1, y=V2, color = Batch)) +  
   geom_point() +
   xlab("UMAP1") + ylab("UMAP2") +
   ggtitle("UMAP") +
@@ -1619,7 +1619,7 @@ tse_sub <- runMDS(tse_sub,
 plots <- lapply(
   c("MDS_aitchison", "MDS_aitchison_rarefied"),
   plotReducedDim,
-  object = tse_sub,colour_by = "Supervivencia")
+  object = tse_sub,colour_by = "Batch")
 
 # Generate multi-panel plot
 wrap_plots(plots) +
@@ -1644,7 +1644,7 @@ tse_lp <- addRDA(
 
 # Store results of PE# Store results of PE# Store results of PERMANOVA test
 rda_info <- attr(reducedDim(tse_lp, "RDA"), "significance")
-
+rda_info
 ```
 
 

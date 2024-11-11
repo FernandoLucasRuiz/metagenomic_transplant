@@ -1,13 +1,13 @@
 
-load("Rdatas/lectura_conteos.RData")
-load("Rdatas/covariables_limpieza.RData")
+otus_lp_t1_t3 <- readRDS("RDSs/otus_lp_t1_t3.RDS")
+covs <- readRDS("RDSs/covs.RDS")
 source("RMDs/Librerias.R")
 source("RMDs/utils.R")
 
 
 
 # vamos a colapsar las columnas de taxonomia para mia
-taxonomia_combinada <- todas_muestras %>%
+taxonomia_combinada <- otus_lp_t1_t3 %>%
     unite("Combined", Phylum:Species, sep = "_", remove = F)
 
 # buscamos los unique para ponerle IDs aleatorios
@@ -26,8 +26,8 @@ todas_muestras_taxonomia <- dplyr::left_join(taxonomia_combinada, taxonos_ids, b
 ## voy a sumar aquellos counts que tengan random_ids y codigo iguales ya que provienen de los "slash calls"
 abundance_table <- todas_muestras_taxonomia %>%
     dplyr::filter(tipo_muestra == "LP") %>%
-    group_by(random_ids, codigo) %>%
-    summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
+    dplyr::group_by(random_ids, codigo) %>%
+    dplyr::summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
     ungroup() %>%
     pivot_wider(names_from = codigo, values_from = Count) %>%
     mutate_all(~replace_na(., 0))
@@ -106,30 +106,33 @@ combinaciones_con_meaf <- Filter(function(x) "MEAF_score" %in% x, combinaciones_
 combinaciones_cadenas <- sapply(combinaciones_con_meaf, function(x) paste(x, collapse = " y "))
 
 
+
+cat("Launching svaseq\n")
+print(Sys.time())
+
 permanovas <- data.frame(matrix(ncol = 4, nrow = 0))
-colnames(permanovas) <- c("Batch Bray-Curtis", "Key Bray-Curtis", "Batch Aitchinson", "Key Aitchinson")
+colnames(permanovas) <- c("Batch  Bray-Curtis", "Key  Bray-Curtis", "Batch Aitchinson", "Key Aitchinson")
 
 plots <- list()
 
-for (i in levels(batchid_T1)){
+for (i in levels(batchid_LP)){
     print(paste0("Analizando run = ", i))
     
     for (j in 1:length(combinaciones_con_meaf)){
         print(paste0("        Combinación: ", j, " ", combinaciones_cadenas[[j]]))
         tryCatch({
-            covariables <- covar_T1 %>% 
+            covariables <- covar_LP %>% 
                 dplyr::select(combinaciones_con_meaf[[j]])
             
             
-            taxa_coregida <- ConQuR(tax_tab=taxa_T1, 
-                                    batchid=batchid_T1, 
+            taxa_coregida <- ConQuR(tax_tab=taxa_LP, 
+                                    batchid=batchid_LP, 
                                     covariates=covariables, 
                                     batch_ref=i)
             
-            saveRDS(taxa_coregida, paste0("RDSs/taxa_corrected_", combinaciones_cadenas[j] ,"_", i, "_T1.RDS"))
+            saveRDS(taxa_coregida, paste0("../RDSs/finetunning_manual_conqur/taxa_corrected_", combinaciones_cadenas[j] ,"_", i, "_lp.RDS"))
             
             print(paste0("     Taxa corregida"))
-            
             
         }, error = function(e) {
             # Manejo del error, imprime un mensaje y continúa
@@ -138,5 +141,6 @@ for (i in levels(batchid_T1)){
     }
 }
 
+print(Sys.time())
 
 

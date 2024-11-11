@@ -21,8 +21,8 @@ knitr::opts_chunk$set(echo = T, warning = F, message = F)
 ```
 
 ```{r, message=FALSE}
-load("../Rdatas/lectura_conteos.RData")
-load("../Rdatas/covariables_limpieza.RData")
+otus_lp_t1_t3 <- readRDS("../RDSs/otus_lp_t1_t3.RDS")
+covs <- readRDS("../RDSs/covs.RDS")
 source("Librerias.R")
 source("utils.R")
 ```
@@ -31,7 +31,7 @@ source("utils.R")
 
 ```{r}
 # vamos a colapsar las columnas de taxonomia para mia
-taxonomia_combinada <- todas_muestras %>%
+taxonomia_combinada <- otus_lp_t1_t3 %>%
     unite("Combined", Phylum:Species, sep = "_", remove = F)
 
 # buscamos los unique para ponerle IDs aleatorios
@@ -50,8 +50,8 @@ todas_muestras_taxonomia <- dplyr::left_join(taxonomia_combinada, taxonos_ids, b
 ## voy a sumar aquellos counts que tengan random_ids y codigo iguales ya que provienen de los "slash calls"
 abundance_table_LP <- todas_muestras_taxonomia %>%
     dplyr::filter(tipo_muestra == "LP") %>%
-    group_by(random_ids, codigo) %>%
-    summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
+    dplyr::group_by(random_ids, codigo) %>%
+    dplyr::summarize(Count = sum(as.numeric(Count), na.rm = TRUE)) %>%
     ungroup() %>%
     pivot_wider(names_from = codigo, values_from = Count) %>%
     mutate_all(~replace_na(., 0))
@@ -99,13 +99,13 @@ common_rows <- intersect(rownames(taxa_LP), rownames(samples_metadata_LP))
 taxa_LP <- taxa_LP[common_rows, ]
 samples_metadata_LP <- samples_metadata_LP[match(rownames(taxa_LP), rownames(samples_metadata_LP)), ]
 
-covar_lp <- samples_metadata_LP 
+covar_LP <- samples_metadata_LP 
 
-taxa_lp <- taxa_LP[rownames(taxa_LP) %in% rownames(covar_lp), ]
+taxa_LP <- taxa_LP[rownames(taxa_LP) %in% rownames(covar_LP), ]
 
-batchid_lp <- as.factor(covar_lp$Batch)
+batchid_LP <- as.factor(covar_LP$Batch)
 
-covar_lp <- covar_lp %>%
+covar_LP <- covar_LP %>%
     dplyr::select(-c("nombre_muestra", "Batch", "tipo_muestra"))
 ```
 
@@ -135,23 +135,26 @@ combinaciones_cadenas <- sapply(combinaciones_con_meaf, function(x) paste(x, col
 # Programa
 
 ```{r, eval=FALSE}
+cat("Launching svaseq\n")
+print(Sys.time())
+
 permanovas <- data.frame(matrix(ncol = 4, nrow = 0))
 colnames(permanovas) <- c("Batch  Bray-Curtis", "Key  Bray-Curtis", "Batch Aitchinson", "Key Aitchinson")
 
 plots <- list()
 
-for (i in levels(batchid_lp)){
+for (i in levels(batchid_LP)){
     print(paste0("Analizando run = ", i))
     
     for (j in 1:length(combinaciones_con_meaf)){
         print(paste0("        Combinación: ", j, " ", combinaciones_cadenas[[j]]))
         tryCatch({
-            covariables <- covar_lp %>% 
+            covariables <- covar_LP %>% 
                 dplyr::select(combinaciones_con_meaf[[j]])
             
             
-            taxa_coregida <- ConQuR(tax_tab=taxa_lp, 
-                                batchid=batchid_lp, 
+            taxa_coregida <- ConQuR(tax_tab=taxa_LP, 
+                                batchid=batchid_LP, 
                                 covariates=covariables, 
                                 batch_ref=i)
             
@@ -165,11 +168,13 @@ for (i in levels(batchid_lp)){
         })
     }
 }
+
+print(Sys.time())
 ```
 
 ```{r}
 # Especifica el directorio donde tienes guardados los archivos .RDS
-directorio <- "../RDSs"
+directorio <- "../RDSs/finetunning_manual_conqur"
 
 # Obtener una lista de archivos .RDS en el directorio
 archivos_rds <- list.files(path = directorio, pattern = "\\.RDS$", full.names = TRUE)
@@ -191,12 +196,12 @@ for (archivo in archivos_rds) {
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 1", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
         }
     }
 }
@@ -204,12 +209,12 @@ for (i in names(lista_de_datos)){
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 1", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
         }
     }
 }
@@ -219,12 +224,12 @@ for (i in names(lista_de_datos)){
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 2", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
         }
     }
 }
@@ -232,12 +237,12 @@ for (i in names(lista_de_datos)){
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 2", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
         }
     }
 }
@@ -247,12 +252,12 @@ for (i in names(lista_de_datos)){
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 3", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, main=paste0(i, " Bray-Curtis"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, main=paste0(i, " Bray-Curtis"))
         }
     }
 }
@@ -260,12 +265,12 @@ for (i in names(lista_de_datos)){
 
 ```{r, fig.width=10, fig.height=10}
 par(mfrow=c(4, 4))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
 
 for (i in names(lista_de_datos)){
     if (grepl(pattern = "MEAF_score", i)){
         if (grepl(pattern = "RUN 3", i)){
-            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_lp, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
+            Plot_PCoA(TAX=lista_de_datos[[i]], factor=batchid_LP, dissimilarity = "Aitch", main=paste0(i, " Aitchison"))
         }
     }
 }
@@ -281,7 +286,7 @@ for (i in names(lista_de_datos)){
     
     if (grepl(pattern = "MEAF_score", i)){
         
-        for (j in levels(batchid_lp)){
+        for (j in levels(batchid_LP)){
             
             if (grepl(pattern = j, i)){
                 patron <- "\\by\\s+([a-zA-Z_]+|[a-zA-Z_]+_[a-zA-Z_]+)"
@@ -298,8 +303,8 @@ for (i in names(lista_de_datos)){
                 }
                 
                 permanova <- PERMANOVA_R2(TAX= lista_de_datos[[i]], 
-                                          batchid=batchid_lp,
-                                          covariates=covar_lp[, palabras_seguidas_de_y], 
+                                          batchid=batchid_LP,
+                                          covariates=covar_LP[, palabras_seguidas_de_y], 
                                           key_index=1)
                 
                 nombre_base <- paste0(" ", paste(palabras_seguidas_de_y, collapse = ", "), " ", j)
@@ -321,45 +326,46 @@ for (i in names(lista_de_datos)){
 reactable::reactable(round(permanovas, 3)*100)
 ```
 
-# Automatica
+<!-- # Automatica -->
 
-```{r, eval=FALSE}
-covar_salida <- covar_lp %>% 
-    dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications) 
+<!-- ```{r, eval=FALSE} -->
+<!-- covar_salida <- covar_LP %>%  -->
+<!--     dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications)  -->
 
-result_tuned <- Tune_ConQuR(tax_tab=taxa_lp,
-                           batchid=batchid_lp,
-                           covariates=covar_salida,
-                           batch_ref_pool=c("RUN 1", "RUN 2", "RUN 3"),
-                           logistic_lasso_pool=c(T, F),
-                           quantile_type_pool=c("standard", "lasso"),
-                           simple_match_pool=c(T, F),
-                           lambda_quantile_pool=c(NA, "2p/n", "2p/logn"),
-                           interplt_pool=c(T, F),
-                           frequencyL=0,
-                           frequencyU=1,
-                           num_core = num_cores-2)
-```
+<!-- result_tuned <- Tune_ConQuR(tax_tab=taxa_LP, -->
+<!--                            batchid=batchid_LP, -->
+<!--                            covariates=covar_salida, -->
+<!--                            batch_ref_pool=c("RUN 1", "RUN 2", "RUN 3"), -->
+<!--                            logistic_lasso_pool=c(T, F), -->
+<!--                            quantile_type_pool=c("standard", "lasso"), -->
+<!--                            simple_match_pool=c(T, F), -->
+<!--                            lambda_quantile_pool=c(NA, "2p/n", "2p/logn"), -->
+<!--                            interplt_pool=c(T, F), -->
+<!--                            frequencyL=0, -->
+<!--                            frequencyU=1, -->
+<!--                            num_core = num_cores-2) -->
+<!-- ``` -->
 
-```{r, fig.width=10, fig.height=8}
-result_tuned <- readRDS("../RDSs/result_tuned.RDS")
+<!-- ```{r, fig.width=10, fig.height=8} -->
+<!-- result_tuned <- readRDS("../RDSs/result_tuned.RDS") -->
 
-covar_salida <- covar_lp %>% 
-    dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications)
+<!-- covar_salida <- covar_LP %>%  -->
+<!--     dplyr::select(MEAF_score, Supervivencia, AR, AHT, Biliary_complications) -->
 
-permanova_original <- PERMANOVA_R2(taxa_lp, batchid = batchid_lp, covariates = covar_salida)
-permanova_tunned <- PERMANOVA_R2(result_tuned$tax_final, batchid = batchid_lp, covariates = covar_salida)
+<!-- permanova_original <- PERMANOVA_R2(taxa_LP, batchid = batchid_LP, covariates = covar_salida) -->
+<!-- permanova_tunned <- PERMANOVA_R2(result_tuned$tax_final, batchid = batchid_LP, covariates = covar_salida) -->
 
-par(mfrow = c(1,2))
-Plot_PCoA(TAX=taxa_lp, factor=batchid_lp, main=paste0("Taxa original", " Bray-Curtis")) 
+<!-- par(mfrow = c(1,2)) -->
+<!-- Plot_PCoA(TAX=taxa_LP, factor=batchid_LP, main=paste0("Taxa original", " Bray-Curtis"))  -->
 
-Plot_PCoA(TAX=result_tuned$tax_final, factor=batchid_lp, main=paste0("Taxa tunned", " Bray-Curtis"))
+<!-- Plot_PCoA(TAX=result_tuned$tax_final, factor=batchid_LP, main=paste0("Taxa tunned", " Bray-Curtis")) -->
 
-```
+<!-- ``` -->
 
-# Guardar
-```{r}
-save.image("../Rdatas/Efecto batch.RData")
-```
+<!-- # Guardar -->
+
+<!-- ```{r} -->
+
+<!-- ``` -->
 
 

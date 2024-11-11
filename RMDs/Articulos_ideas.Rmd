@@ -96,6 +96,24 @@ Notas: Muy interesante para seguir los pasos que ellos siguen. Solamente utiliza
 
 -   Está bastante mal escrito la verdad pero se pueden sacar cosas interesantes de metodología
 
+#### Su 2024 Multikingdom and functional gut microbiota markers for autism spectrum disorder
+
+<https://pubmed.ncbi.nlm.nih.gov/38977906/>
+
+-   En primer lugar hacen un permanova y ven las variables que salen significativas en la varianza explicada de la beta diversidad y lo ajustan.
+
+-   The proportion of variance in microbiome composition that can be explained by phenotypes was simultaneously calculated by permutational multivariate analysis of variance (PERMANOVA) using distance matrices (adonis) implemented in the adonis function of the R package vegan (v.2.6-4)^[78](https://www.nature.com/articles/s41564-024-01739-1#ref-CR78 "Dixon, P. VEGAN, a package of R functions for community ecology. J. Veg. Sci. 14, 927–930 (2003).")^ following a previous study^[23](https://www.nature.com/articles/s41564-024-01739-1#ref-CR23 "Gacesa, R. et al. Environmental factors shaping the gut microbiome in a Dutch population. Nature 604, 732–739 (2022).")^. Analysis was performed on the microbiome beta-diversity (Bray–Curtis distance matrix calculated using relative abundances of microbial species) and phenotypes using the adonis2 implementation of the PERMANOVA algorithm in R with 9,999 permutations.
+
+-   The microbiome data were transformed via the centred log-ratio (CLR) transformation using the geometric mean of relative abundances of these features as the CLR denominator to break the compositionality of the data and normalize skewed distributions of microbiome features using the R package ‘compositions’ (v.2.0-5)^[77](https://www.nature.com/articles/s41564-024-01739-1#ref-CR77 "van den Boogaart, K. G. & Tolosana-Delgado, R. “compositions”: a unified R package to analyze compositional data. Comput. Geosci. 34, 320–338 (2008).")^. After transformation, the data distribution was assumed to be normal, but this was not formally tested.
+
+-   Utilizan MaAslin2 para las comparativas porque " MaAsLin2 (v.1.4.0)^[80](https://www.nature.com/articles/s41564-024-01739-1#ref-CR80 "Mallick, H. et al. Multivariable association discovery in population-scale meta-omics studies. PLoS Comput. Biol. 17, e1009442 (2021).")^, which relies on general linear models and offers a variety of data exploration, normalization and transformation methods."
+
+-   Prueban a hacer predicción por separado y luego lo juntan con las rutas metabolicas. Eligen las que mejor salen en el RF y lo vuelven a pasar.
+
+-   Testean en otros datasets, incluidos datasets que no son de ADH
+
+-   Tiene el codigo de las figuras! COGERLAS!
+
 ------------------------------------------------------------------------
 
 ## Análisis
@@ -139,6 +157,16 @@ Notas: Parece un articulo de respuesta a unas criticas que hicieron otros. Los a
 -   
 
 Notas: MUY INTERESANTE LA TABLA 2.
+
+#### Mallick 2021 **Multivariable association discovery in population-scale meta-omics studies**
+
+<https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009442>
+
+-   Utilizan una cosa que se llama SparseDOSSA que es un programa que te simula datos.
+
+-   Based on these evaluations, a linear model with TSS normalization and log transformation was adopted as the default model in MaAsLin 2, and the software provides several flexible options to apply a combination ofother normalization, transformation, and statistical methods to customize specific analysis tasks.
+
+-   Defienden que es el mejor para datos
 
 ------------------------------------------------------------------------
 

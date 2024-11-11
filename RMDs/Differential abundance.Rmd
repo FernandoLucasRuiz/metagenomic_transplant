@@ -1,0 +1,1293 @@
+---
+title: "Differential abundance"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, warning=FALSE, message=FALSE}
+source("Librerias.R")
+source("utils.R")
+
+covs <- readRDS("../RDSs/covs.RDS")
+tse_lp <- readRDS("../RDSs/tse_lp.RDS")
+tse_t1 <- readRDS("../RDSs/tse_t1.RDS")
+tse_t3 <- readRDS("../RDSs/tse_t3.RDS")
+tse_bilis <- readRDS("../RDSs/tse_bilis.RDS")
+tse_stool <- readRDS("../RDSs/tse_stool.RDS")
+tse_higado_sra <- readRDS("../RDSs/tse_higado_sra.RDS")
+tse_bilis_sra <- readRDS("../RDSs/tse_bilis_sra.RDS")
+tse_bilis_sra2 <- readRDS("../RDSs/tse_bilis_sra2.RDS")
+tse_lp_fastq <- readRDS("../RDSs/tse_lp_fastq.RDS")
+
+```
+
+# Cargar muestras
+
+## Renombrar Phylum
+
+```{r}
+lp_nombres <- rownames(assay(agglomerateByRank(tse_lp, rank = "Phylum")))
+t1_nombres <- rownames(assay(agglomerateByRank(tse_t1, rank = "Phylum")))
+t3_nombres <- rownames(assay(agglomerateByRank(tse_t3, rank = "Phylum")))
+sra_nombres_higado <- rownames(assay(agglomerateByRank(tse_higado_sra, rank = "Phylum")))
+bilis_nombres <- rownames(assay(agglomerateByRank(tse_bilis, rank = "Phylum")))
+stool_nombres <- rownames(assay(agglomerateByRank(tse_stool, rank = "Phylum")))
+sra_nombres_bilis <- rownames(assay(agglomerateByRank(tse_bilis_sra, rank = "Phylum")))
+sra_nombres_bilis2 <- rownames(assay(agglomerateByRank(tse_bilis_sra2, rank = "Phylum")))
+lp_fastq_nombres <- rownames(assay(agglomerateByRank(tse_lp_fastq, rank = "Phylum")))
+
+
+setdiff(c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres), c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres))
+cat("\n")
+setdiff(c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres), c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres))
+
+correspondencia_nombres <- c("Acidobacteriota" = "Acidobacteria",
+                             "Actinobacteriota" = "Actinobacteria",
+                             "Bacteroidota" = "Bacteroidetes",
+                             "Gemmatimonadota" = "Gemmatimonadetes",
+                             "Nitrospirota" = "Nitrospirae"
+                             )
+
+sra_nombres_higado <- ifelse(sra_nombres_higado %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_higado], 
+                      sra_nombres_higado)
+stool_nombres <- ifelse(stool_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[stool_nombres], 
+                      stool_nombres)
+sra_nombres_bilis <- ifelse(sra_nombres_bilis %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_bilis], 
+                      sra_nombres_bilis)
+sra_nombres_bilis2 <- ifelse(sra_nombres_bilis2 %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_bilis2], 
+                      sra_nombres_bilis2)
+lp_fastq_nombres <- ifelse(lp_fastq_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[lp_fastq_nombres], 
+                      lp_fastq_nombres)
+
+cat("\n")
+setdiff(c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres), c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres))
+cat("\n")
+setdiff(c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres), c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres))
+
+rowData(tse_higado_sra)$Phylum <- ifelse(rowData(tse_higado_sra)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_higado_sra)$Phylum],
+                      rowData(tse_higado_sra)$Phylum)
+
+rowData(tse_stool)$Phylum <- ifelse(rowData(tse_stool)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_stool)$Phylum],
+                      rowData(tse_stool)$Phylum)
+
+rowData(tse_bilis_sra)$Phylum <- ifelse(rowData(tse_bilis_sra)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_bilis_sra)$Phylum],
+                      rowData(tse_bilis_sra)$Phylum)
+
+rowData(tse_bilis_sra2)$Phylum <- ifelse(rowData(tse_bilis_sra2)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_bilis_sra2)$Phylum],
+                      rowData(tse_bilis_sra2)$Phylum)
+
+rowData(tse_lp_fastq)$Phylum <- ifelse(rowData(tse_lp_fastq)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_lp_fastq)$Phylum],
+                      rowData(tse_lp_fastq)$Phylum)
+
+```
+
+## Renombrar Class
+
+```{r}
+lp_nombres <- rownames(assay(agglomerateByRank(tse_lp, rank = "Class")))
+t1_nombres <- rownames(assay(agglomerateByRank(tse_t1, rank = "Class")))
+t3_nombres <- rownames(assay(agglomerateByRank(tse_t3, rank = "Class")))
+sra_nombres_higado <- rownames(assay(agglomerateByRank(tse_higado_sra, rank = "Class")))
+bilis_nombres <- rownames(assay(agglomerateByRank(tse_bilis, rank = "Class")))
+stool_nombres <- rownames(assay(agglomerateByRank(tse_stool, rank = "Class")))
+sra_nombres_bilis <- rownames(assay(agglomerateByRank(tse_bilis_sra, rank = "Class")))
+sra_nombres_bilis2 <- rownames(assay(agglomerateByRank(tse_bilis_sra2, rank = "Class")))
+lp_fastq_nombres <- rownames(assay(agglomerateByRank(tse_lp_fastq, rank = "Class")))
+
+
+setdiff(c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres), c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres))
+cat("\n")
+setdiff(c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres), c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres))
+
+correspondencia_nombres <- c("Acidobacteriota" = "Acidobacteria",
+                             "Actinobacteriota" = "Actinobacteria",
+                             "Bacteroidota" = "Bacteroidetes",
+                             "Gemmatimonadota" = "Gemmatimonadetes",
+                             "Nitrospirota" = "Nitrospirae"
+                             )
+
+sra_nombres_higado <- ifelse(sra_nombres_higado %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_higado], 
+                      sra_nombres_higado)
+stool_nombres <- ifelse(stool_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[stool_nombres], 
+                      stool_nombres)
+sra_nombres_bilis <- ifelse(sra_nombres_bilis %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_bilis], 
+                      sra_nombres_bilis)
+sra_nombres_bilis2 <- ifelse(sra_nombres_bilis2 %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[sra_nombres_bilis2], 
+                      sra_nombres_bilis2)
+lp_fastq_nombres <- ifelse(lp_fastq_nombres %in% names(correspondencia_nombres), 
+                      correspondencia_nombres[lp_fastq_nombres], 
+                      lp_fastq_nombres)
+
+cat("\n")
+setdiff(c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres), c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres))
+cat("\n")
+setdiff(c(sra_nombres_higado, stool_nombres, sra_nombres_bilis, sra_nombres_bilis2, lp_fastq_nombres), c(lp_nombres, t1_nombres, t3_nombres, bilis_nombres))
+
+rowData(tse_higado_sra)$Phylum <- ifelse(rowData(tse_higado_sra)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_higado_sra)$Phylum],
+                      rowData(tse_higado_sra)$Phylum)
+
+rowData(tse_stool)$Phylum <- ifelse(rowData(tse_stool)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_stool)$Phylum],
+                      rowData(tse_stool)$Phylum)
+
+rowData(tse_bilis_sra)$Phylum <- ifelse(rowData(tse_bilis_sra)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_bilis_sra)$Phylum],
+                      rowData(tse_bilis_sra)$Phylum)
+
+rowData(tse_bilis_sra2)$Phylum <- ifelse(rowData(tse_bilis_sra2)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_bilis_sra2)$Phylum],
+                      rowData(tse_bilis_sra2)$Phylum)
+
+rowData(tse_lp_fastq)$Phylum <- ifelse(rowData(tse_lp_fastq)$Phylum %in% names(correspondencia_nombres),
+                      correspondencia_nombres[rowData(tse_lp_fastq)$Phylum],
+                      rowData(tse_lp_fastq)$Phylum)
+```
+
+"‘standardize’ Standardize(or ‘z-score’) transformation scales data to zero mean and unit variance. This is used to bring features (or samples) to more comparable levels in terms of mean and scale of the values. This can enhance visualization and interpretation of the data"
+
+```{r}
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "relabundance")
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "standardize")
+tse_lp <- transformAssay(tse_lp, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "relabundance")
+tse_t1 <- transformAssay(tse_t1, assay.type = "counts", method = "standardize")
+tse_t1 <- transformAssay(tse_t1, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_t3 <- transformAssay(tse_t3, assay.type = "counts", method = "relabundance")
+tse_t3 <- transformAssay(tse_t3, assay.type = "counts", method = "standardize")
+tse_t3 <- transformAssay(tse_t3, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "counts", method = "relabundance")
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "counts", method = "standardize")
+tse_higado_sra <- transformAssay(tse_higado_sra, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_bilis <- transformAssay(tse_bilis, assay.type = "counts", method = "relabundance")
+tse_bilis <- transformAssay(tse_bilis, assay.type = "counts", method = "standardize")
+tse_bilis <- transformAssay(tse_bilis, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_bilis_sra <- transformAssay(tse_bilis_sra, assay.type = "counts", method = "relabundance")
+tse_bilis_sra <- transformAssay(tse_bilis_sra, assay.type = "counts", method = "standardize")
+tse_bilis_sra <- transformAssay(tse_bilis_sra, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_bilis_sra2 <- transformAssay(tse_bilis_sra2, assay.type = "counts", method = "relabundance")
+tse_bilis_sra2 <- transformAssay(tse_bilis_sra2, assay.type = "counts", method = "standardize")
+tse_bilis_sra2 <- transformAssay(tse_bilis_sra2, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+tse_lp_fastq <- transformAssay(tse_lp_fastq, assay.type = "counts", method = "relabundance")
+tse_lp_fastq <- transformAssay(tse_lp_fastq, assay.type = "counts", method = "standardize")
+tse_lp_fastq <- transformAssay(tse_lp_fastq, assay.type = "relabundance", method = "clr", pseudocount = TRUE)
+
+```
+
+# Community composition
+
+## Relative abundance
+
+```{r, fig.width=8, fig.height= 5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_t3 = tse_t3,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool,
+                                                  tse_bilis_sra = tse_bilis_sra,
+                                                  tse_bilis_sra2 = tse_bilis_sra2,
+                                                  tse_lp_fastq = tse_lp_fastq),
+                                             ranking = "Phylum",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_t3", "tse_bilis", "tse_bilis_sra", "tse_bilis_sra2", "tse_higado_sra",  "tse_stool", "tse_lp_fastq")))
+
+
+plotear_abundancia_relativa(abundancias, "Phylum")
+```
+
+```{r}
+tse_lp_phylum <- agglomerateByRank(tse_lp, "Phylum")
+
+counts_lp <- as.data.frame(t(assay(tse_lp_phylum, "counts"))) %>% 
+    rownames_to_column(var = "sample")
+
+
+
+
+covariates_lp <- colData(tse_lp_phylum) %>%
+    as.data.frame()%>%
+    rownames_to_column(var = "sample")
+
+dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
+    dplyr::select(intersect(names(.), names(counts_lp)), Supervivencia, -sample) %>%
+    pivot_longer(-Supervivencia, names_to = "Taxon", values_to = "Abundance") %>%
+    group_by(Supervivencia, Taxon) %>%
+    summarize(suma = sum(Abundance)) %>%
+    group_by(Supervivencia) %>%
+    mutate(suma_condition = sum(suma),
+           relative_abundance = suma / suma_condition) %>%
+    ggplot(aes(x=Supervivencia, y=relative_abundance, fill = Taxon)) +
+    geom_bar(stat = "identity") +
+    #scale_fill_paletteer_d("ggthemes::Tableau_10") + 
+    labs(title = "Phylum Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(
+        # axis.text.x = element_blank(),
+        # axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "none",  # Posiciona la leyenda abajo
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) 
+
+
+```
+
+```{r, fig.width=10, fig.height=10}
+plotear_diferencias_relabundance(tse_lp, "Phylum", "AR")
+```
+
+```{r, fig.width=10, fig.height=10}
+plotear_diferencias_relabundance(tse_lp, "Class", "Donación")
+```
+
+```{r, fig.width=10, fig.height=5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_t3 = tse_t3,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool,
+                                                  tse_bilis_sra = tse_bilis_sra),
+                                             ranking = "Class",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_t3", "tse_bilis", "tse_bilis_sra", "tse_higado_sra", "tse_stool")))
+
+
+plotear_abundancia_relativa(abundancias, "Class")
+```
+
+```{r, fig.width=10, fig.height=5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_t3 = tse_t3,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool,
+                                                  tse_bilis_sra = tse_bilis_sra),
+                                             ranking = "Order",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_t3", "tse_bilis", "tse_bilis_sra", "tse_higado_sra", "tse_stool")))
+
+
+plotear_abundancia_relativa(abundancias, "Order")
+```
+
+```{r, fig.width=10, fig.height=5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_t3 = tse_t3,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool,
+                                                  tse_bilis_sra = tse_bilis_sra),
+                                             ranking = "Family",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_t3", "tse_bilis", "tse_bilis_sra", "tse_higado_sra", "tse_stool")))
+
+
+plotear_abundancia_relativa(abundancias, "Family")
+```
+
+```{r, fig.width=10, fig.height=5}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  tse_t3 = tse_t3,
+                                                  tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool,
+                                                  tse_bilis_sra = tse_bilis_sra),
+                                             ranking = "Genus",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_t3", "tse_bilis", "tse_bilis_sra", "tse_higado_sra", "tse_stool")))
+
+
+plotear_abundancia_relativa(abundancias, "Genus")
+```
+
+```{r}
+abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
+                                                  tse_bilis = tse_bilis,
+                                                  tse_t1 = tse_t1,
+                                                  #tse_higado_sra= tse_higado_sra,
+                                                  tse_stool = tse_stool
+                                                  ),
+                                             ranking = "Species",
+                                             top = 5)
+
+
+abundancias <- abundancias %>%
+    group_by(Taxon) %>%
+    mutate(order_TSE_lp = ifelse(TSE == "tse_lp", Relative_Abundance, NA)) %>%
+    arrange(desc(order_TSE_lp)) %>%
+    ungroup() %>%
+    mutate(taxa_sub = factor(taxa_sub, levels = c(unique(taxa_sub[taxa_sub != "Other"]), "Other")),
+           TSE = factor(TSE, levels = c("tse_lp", "tse_t1", "tse_bilis", "tse_higado_sra", "tse_stool")))
+
+
+plotear_abundancia_relativa(abundancias, "Species")
+```
+
+## Differential Abundance Analysis (DAA)  
+
+### DESEq2
+
+#### Variables salida
+
+```{r}
+variables_salida <- c("Supervivencia", "AR", "AHT", "Biliary_complications")
+
+objetos_deseq2 <- list()
+
+for (i in variables_salida) {
+    
+    counts <- as.data.frame(assay(tse_lp))
+
+    metadata <- data.frame(colData(tse_lp)) %>%
+        rownames_to_column(var = "sample")
+    
+    if (i == "Supervivencia") {
+         metadata[[i]] <- relevel(metadata[[i]], ref = "SI")
+    } else {
+        metadata[[i]] <- relevel(metadata[[i]], ref = "NO")
+    }
+    
+    dds <- DESeqDataSetFromMatrix(countData=counts, 
+                                  colData=metadata, 
+                                  design=as.formula(paste0("~ ", i)))
+    
+    dds <- DESeq(dds, quiet = T)
+    res <- results(dds)
+    res <- res[order(res$padj),]
+    res <- res %>%
+        as.data.frame() %>%
+        rownames_to_column(var = "code")
+    
+    taxa_names <- rowData(tse_lp) %>%
+        as.data.frame() %>%
+        unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+        rownames_to_column(var = "code") %>%
+        # Separar la columna en múltiples columnas por "_"
+        separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+        # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+        mutate(Name_microorganism = case_when(
+            !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+            !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+            !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+            !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+            !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+            !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+            )) %>%
+        dplyr::select(code, Name_microorganism)
+    
+    res <- dplyr::left_join(res, taxa_names, by = "code") %>%
+        as.data.frame()
+    
+    objetos_deseq2[[i]] <- res
+    
+}
+```
+
+```{r, fig.width=8, fig.height=5}
+
+plots <- list()
+
+for (i in names(objetos_deseq2)) {
+    
+    volcano_data <- as.data.frame(objetos_deseq2[[i]])
+    
+    volcano_data[is.na(volcano_data)] <- 1
+    
+    # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+    volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Problematic",
+                                                         ifelse(pvalue < 0.05 & log2FoldChange < -1, "No problematic", "Not Significant")))
+    
+    p <- ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+        geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+        scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Problematic" , "No problematic"))) +
+        scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Problematic" , "No problematic"))) +
+        scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Problematic" , "No problematic"))) +
+        geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                        color = "black",
+                        max.overlaps = 10, # Reduce el número máximo de solapamientos
+                        point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                        size = 2.5, # Tamaño de fuente más pequeño
+                        segment.size = 0.2, # Líneas de guía más finas
+                        segment.color = 'grey50',
+                        max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                        arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+        labs(title = paste0("Volcano Plot: ", i), xlab = "Log2 Fold Change", ylab = "-Log10 P-value") + 
+        theme_minimal() +
+        geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+        geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+        theme(legend.title = element_blank(),
+              legend.text = element_text(size = 12),
+              text = element_text(size = 12),
+              legend.key.size = unit(0.5, "cm"),
+              #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+              )
+    
+    plots[[i]] <- p
+    
+}
+
+plots
+```
+
+
+```{r}
+df_filtrado <- data.frame()
+
+for (i in names(objetos_deseq2)){
+    
+    i_filtrado <- objetos_deseq2[[i]] %>%
+        dplyr::filter(pvalue < 0.05 & (log2FoldChange < -1 | log2FoldChange > 1))
+    
+    i_filtrado$variable <- i
+    
+    if (nrow(df_filtrado) == 0) {
+
+        df_filtrado <- i_filtrado
+        
+    } else {
+        
+        df_filtrado <- rbind(df_filtrado, i_filtrado)
+        
+    }
+    
+}
+```
+
+```{r, fig.width=8, fig.height=8}
+lista <- list()
+for (i in df_filtrado$variable) {
+    
+    microorganismos <- df_filtrado %>%
+        dplyr::filter(variable == i) %>%
+        pull(Name_microorganism)
+    
+    lista[[i]] <- microorganismos
+    
+}
+
+ggVennDiagram::ggVennDiagram(lista[1:3]) +
+    ggplot2::scale_fill_gradient(low="white",high = "red")
+```
+
+```{r}
+Reduce(intersect, lista[1:3])
+
+rowData(tse_lp) %>%
+    as.data.frame() %>%
+    filter(Species == "propinquum")
+
+```
+
+#### Variables donante
+
+
+```{r}
+colnames(metadata)
+```
+
+```{r}
+variables_donante <- c("Sexo_D", "BMI_D", "GPT_D", "Edad_D", "GOT_D")
+
+
+
+objetos_deseq2 <- list()
+
+for (i in variables_salida) {
+    
+    counts <- as.data.frame(assay(tse_lp))
+
+    metadata <- data.frame(colData(tse_lp)) %>%
+        rownames_to_column(var = "sample")
+    
+    if (i == "Supervivencia") {
+         metadata[[i]] <- relevel(metadata[[i]], ref = "SI")
+    } else {
+        metadata[[i]] <- relevel(metadata[[i]], ref = "NO")
+    }
+    
+    dds <- DESeqDataSetFromMatrix(countData=counts, 
+                                  colData=metadata, 
+                                  design=as.formula(paste0("~ ", i)))
+    
+    dds <- DESeq(dds, quiet = T)
+    res <- results(dds)
+    res <- res[order(res$padj),]
+    res <- res %>%
+        as.data.frame() %>%
+        rownames_to_column(var = "code")
+    
+    taxa_names <- rowData(tse_lp) %>%
+        as.data.frame() %>%
+        unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+        rownames_to_column(var = "code") %>%
+        # Separar la columna en múltiples columnas por "_"
+        separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+        # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+        mutate(Name_microorganism = case_when(
+            !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+            !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+            !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+            !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+            !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+            !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+            )) %>%
+        dplyr::select(code, Name_microorganism)
+    
+    res <- dplyr::left_join(res, taxa_names, by = "code") %>%
+        as.data.frame()
+    
+    objetos_deseq2[[i]] <- res
+    
+}
+```
+
+```{r, fig.width=8, fig.height=5}
+
+plots <- list()
+
+for (i in names(objetos_deseq2)) {
+    
+    volcano_data <- as.data.frame(objetos_deseq2[[i]])
+    
+    volcano_data[is.na(volcano_data)] <- 1
+    
+    # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+    volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Problematic",
+                                                         ifelse(pvalue < 0.05 & log2FoldChange < -1, "No problematic", "Not Significant")))
+    
+    p <- ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+        geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+        scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Problematic" , "No problematic"))) +
+        scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Problematic" , "No problematic"))) +
+        scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Problematic" , "No problematic"))) +
+        geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                        color = "black",
+                        max.overlaps = 10, # Reduce el número máximo de solapamientos
+                        point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                        size = 2.5, # Tamaño de fuente más pequeño
+                        segment.size = 0.2, # Líneas de guía más finas
+                        segment.color = 'grey50',
+                        max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                        arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+        labs(title = paste0("Volcano Plot: ", i), xlab = "Log2 Fold Change", ylab = "-Log10 P-value") + 
+        theme_minimal() +
+        geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+        geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+        theme(legend.title = element_blank(),
+              legend.text = element_text(size = 12),
+              text = element_text(size = 12),
+              legend.key.size = unit(0.5, "cm"),
+              #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+              )
+    
+    plots[[i]] <- p
+    
+}
+
+plots
+```
+
+
+```{r}
+df_filtrado <- data.frame()
+
+for (i in names(objetos_deseq2)){
+    
+    i_filtrado <- objetos_deseq2[[i]] %>%
+        dplyr::filter(pvalue < 0.05 & (log2FoldChange < -1 | log2FoldChange > 1))
+    
+    i_filtrado$variable <- i
+    
+    if (nrow(df_filtrado) == 0) {
+
+        df_filtrado <- i_filtrado
+        
+    } else {
+        
+        df_filtrado <- rbind(df_filtrado, i_filtrado)
+        
+    }
+    
+}
+```
+
+```{r, fig.width=8, fig.height=8}
+lista <- list()
+for (i in df_filtrado$variable) {
+    
+    microorganismos <- df_filtrado %>%
+        dplyr::filter(variable == i) %>%
+        pull(Name_microorganism)
+    
+    lista[[i]] <- microorganismos
+    
+}
+
+ggVennDiagram::ggVennDiagram(lista) +
+    ggplot2::scale_fill_gradient(low="white",high = "red")
+```
+
+```{r}
+Reduce(intersect, lista)
+
+rowData(tse_lp) %>%
+    as.data.frame() %>%
+    filter(Species == "propinquum")
+
+```
+
+
+#### Survival
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp)) %>%
+    rownames_to_column(var = "sample")
+metadata$Supervivencia <- relevel(metadata$Supervivencia, ref = "SI")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~Supervivencia)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Rejection",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "Survival", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "Survival"=4, "Rejection"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "Survival" = 0.75, "Rejection" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "Rejection"="#FDE725FF", "Survival"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: Survival vs Rejection") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = Supervivencia, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = Supervivencia, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+
+#### AR
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp)) %>%
+    rownames_to_column(var = "sample")
+metadata$AR <- relevel(metadata$AR, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~AR)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "AR",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO AR", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "AR"=4, "NO AR"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "AR" = 0.75, "NO AR" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "AR"="#FDE725FF", "NO AR"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: AR vs NO AR") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = AR, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = AR, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+#### AHT
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp))%>%
+    rownames_to_column(var="sample")
+metadata$AHT <- relevel(metadata$AHT, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~AHT)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "AHT",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO AHT", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "AHT"=4, "NO AHT"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "AHT" = 0.75, "NO AHT" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "AHT"="#FDE725FF", "NO AHT"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: AHT vs NO AHT") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = AHT, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = AHT, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2) +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+#### Biliary_complications
+
+```{r, message=FALSE}
+counts <- as.data.frame(assay(tse_lp))
+
+metadata <- data.frame(colData(tse_lp))%>%
+    rownames_to_column(var="sample")
+
+metadata$Biliary_complications <- relevel(metadata$Biliary_complications, ref = "NO")
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~Biliary_complications)
+
+dds <- DESeq(dds, quiet = T)
+res <- results(dds)
+res <- res[order(res$padj),]
+
+summary(res)
+
+res <- data.frame(res)
+res <- res %>%
+  rownames_to_column(var = "code")
+
+taxa_names <- rowData(tse_lp) %>%
+    as.data.frame() %>%
+    unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+    rownames_to_column(var = "code") %>%
+  # Separar la columna en múltiples columnas por "_"
+  separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+  # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+  mutate(Name_microorganism = case_when(
+    !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+    !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+    !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+    !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+    !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+    !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+  )) %>%
+  dplyr::select(code, Name_microorganism)
+
+res <-dplyr::left_join(res, taxa_names, by = "code") %>%
+    as.data.frame()
+
+```
+
+```{r, fig.width=8, fig.height=5}
+# Volcano Plot
+volcano_data <- as.data.frame(res)
+
+volcano_data[is.na(volcano_data)] <- 1
+
+# Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+volcano_data$Regulation <- with(volcano_data, ifelse(pvalue < 0.05 & log2FoldChange > 1, "Biliary_complications",
+                                                     ifelse(pvalue < 0.05 & log2FoldChange < -1, "NO Biliary_complications", "Not Significant")))
+
+
+ggplot(volcano_data, aes(x=log2FoldChange,
+                         y=-log10(pvalue), color=Regulation)) +
+    geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+    scale_size_manual(values = c("Not Significant"=4, "Biliary_complications"=4, "NO Biliary_complications"=4)) +
+    scale_alpha_manual(values = c("Not Significant" = 0.1, "Biliary_complications" = 0.75, "NO Biliary_complications" = 0.75)) +
+    #scale_color_viridis(discrete = TRUE, option = "D") +
+    scale_color_manual(values = c("Not Significant"="#26828EFF", "Biliary_complications"="#FDE725FF", "NO Biliary_complications"="#440154FF")) +
+    geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", Name_microorganism, "")),
+                    color = "black",
+                    max.overlaps = 10, # Reduce el número máximo de solapamientos
+                    point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                    size = 2.5, # Tamaño de fuente más pequeño
+                    segment.size = 0.2, # Líneas de guía más finas
+                    segment.color = 'grey50',
+                    max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                    arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+    ggtitle("Volcano Plot: Biliary_complications vs NO Biliary_complications") +
+    xlab("Log2 Fold Change") +
+    ylab("-Log10 P-value") +
+    theme_minimal() +
+    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+    theme(legend.title = element_blank(),
+          legend.text = element_text(size = 12),
+          text = element_text(size = 12),
+          legend.key.size = unit(0.5, "cm"),
+          #plot.margin = margin(5, 5, 5, 5) # Agrega un margen alrededor de la gráfica si es necesario
+          )
+```
+
+```{r, fig.width=10, fig.height=10}
+nombres_significativas <- res %>% 
+    dplyr::filter(pvalue < 0.05) %>% 
+    dplyr::select(code, Name_microorganism)
+
+assay(tse_lp, "relabundance") %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "code") %>%
+    dplyr::filter(code %in% nombres_significativas$code) %>%
+    pivot_longer(-code, names_to = "sample") %>%
+    dplyr::left_join(nombres_significativas, by = "code") %>% 
+    dplyr::left_join(metadata, by = "sample") %>%
+    ggplot(aes(x = Biliary_complications, y = value)) +
+    geom_boxplot() +
+    geom_jitter(aes(x = Biliary_complications, y = value)) +
+    scale_y_log10() +
+    facet_wrap(~Name_microorganism) +
+    stat_compare_means(label = "p.signif", vjust = 2, method = "wilcox") +
+    theme(
+        panel.background = element_blank()
+    )
+```
+
+### ALDEx2
+
+<https://bioconductor.org/packages/release/bioc/vignettes/ALDEx2/inst/doc/ALDEx2_vignette.html#1_Introduction_to_ALDEx2>
+
+```{r}
+library(ALDEx2)
+
+selex.sub
+
+x.aldex <- aldex(data.frame(assay(tse_lp)), 
+                 as.vector(colData(tse_lp)$Supervivencia), 
+                 test="kw", 
+                 effect=TRUE, 
+                 include.sample.summary=T, 
+                 denom="all", 
+                 verbose=FALSE, 
+                 paired.test=FALSE, 
+                 gamma=NULL)
+
+par(mfrow=c(1,3))
+aldex.plot(x.aldex, type="MA", test="welch", xlab="Log-ratio abundance",
+    ylab="Difference", main='Bland-Altman plot')
+aldex.plot(x.aldex, type="MW", test="welch", xlab="Dispersion",
+    ylab="Difference", main='Effect plot')
+aldex.plot(x.aldex, type="volcano", test="welch", xlab="Difference",
+    ylab="-1(log10(q))", main='Volcano plot') 
+```
+
+
+
+
+## Unique species
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Phylum", sort = TRUE),
+                    T1= getUnique(tse_t1, "Phylum", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Phylum", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Phylum", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Phylum", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Phylum", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Class", sort = TRUE),
+                    T1= getUnique(tse_t1, "Class", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Class", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Class", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Class", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Class", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+```{r}
+unique_taxa <- list(LP = getUnique(tse_lp, "Genus", sort = TRUE),
+                    T1= getUnique(tse_t1, "Genus", sort = TRUE),
+                    Stool = getUnique(tse_stool, "Genus", sort = TRUE),
+                    Liver_SRA = getUnique(tse_higado_sra, "Genus", sort = TRUE),
+                    Bilis = getUnique(tse_bilis, "Genus", sort = TRUE)
+                    
+)
+
+upset(fromList(unique_taxa), 
+      order.by = "freq",
+      sets.x.label = "Counts",
+      mainbar.y.label = "Intersection",
+      point.size = 3.5, line.size = 1.5,
+      sets = names(unique_taxa),
+      text.scale = c(2, 1.3, 1, 1, 2, 1.7),
+      #queries = list(list(query = intersects, params = list("mUMAP1+ Alzheimer","mUMAP2- Proteasome"), color = "orange", active = T)),
+      )
+# Agregar el título usando grid.text
+grid.text("Genus", x = 0.2, y = 0.95, gp = gpar(fontsize = 18, fontface = "bold"))
+
+```
+
+
+
+
+
+```{r}
+# Add clr-transformation on samples
+tse_lp_phylum <- transformAssay(
+    tse_lp_phylum, assay.type = "counts", method = "relabundance", pseudocount = 1)
+tse_lp_phylum <- transformAssay(tse_lp_phylum, assay.type = "relabundance", method = "clr")
+
+# Add scale features (taxa)
+tse_lp_phylum <- transformAssay(
+    tse_lp_phylum, assay.type = "clr", MARGIN = "rows", method = "standardize",
+    name = "clr-z")
+
+library(sechm)
+
+# Plot heatMap with sechm
+heatmap <- sechm(
+    tse_lp_phylum, assayName = "clr-z", features=rownames(tse_lp_phylum), do.scale = F, top_annotation="Supervivencia",
+    show_rownames = TRUE, show_colnames = TRUE, cluster_cols = T, cluster_rows = F,
+    row_names_gp = gpar(fontsize = 6), column_names_gp = gpar(fontsize = 8),
+    breaks = 1
+    )
+heatmap
+```

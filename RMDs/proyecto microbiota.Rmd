@@ -22,7 +22,7 @@ Tenemos un análisis metagenómico de 114 pifspo de pacientes. De esos pacientes
 
 Alberto me pasó los datos mediante la aplicación web Ion Reporter. Una vez allí hice el análisis completo para extraer conteos mediante la propia web ya que Fernando de Bioinformática me dijo que era lo que solian hacer ellos con las secuenciaciones de IonTorrent. Seguí el workflow que daba la opción en la web para metagenómica de 16S. Me descargué los datos a R para realizar el análisis completo.
 
-Documento de analisis de IonReporter [chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://assets.thermofisher.com/TFS-Assets/LSG/Vector-Information/ion-reporter-16s-metagenomics-algorithms-whitepaper.pdf](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://assets.thermofisher.com/TFS-Assets/LSG/Vector-Information/ion-reporter-16s-metagenomics-algorithms-whitepaper.pdf){.uri}
+Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://assets.thermofisher.com/TFS-Assets/LSG/Vector-Information/ion-reporter-16s-metagenomics-algorithms-whitepaper.pdf>
 
 ------------------------------------------------------------------------
 
@@ -172,7 +172,7 @@ Documento de analisis de IonReporter [chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [ ] batch effect
 
--   [ ] 
+-   [ ]
 
 ------------------------------------------------------------------------
 
@@ -387,7 +387,7 @@ Estoy probando distintas combinaciones de Runs y de muestras para ver cual es la
 He hecho un programa para recoger todas la información de cada muestra con cada RUN y cada variable
 
 | NO mejora ninguna variable en ningun run. El mejor reduccion de batch es un 4.2 o 3.9 |
-|------------------------------------------------------------------------|
+|----|
 
 Voy a seguir con las combinaciones de donante filtrado para ver la mejor posible combinación con todas las muestras
 
@@ -567,7 +567,7 @@ Lo primero de todo vamos a ver qué covariables son importantes a la hora de sep
 -   Probar primero con todas las variables juntas en la formula
 
 |  |
-|------------------------------------------------------------------------|
+|----|
 | Parece que no hay efecto en ninguna variable con PERMANOVA con p\< 0.05 pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
 
 ![](images/clipboard-2829566327.png)
@@ -575,7 +575,7 @@ Lo primero de todo vamos a ver qué covariables son importantes a la hora de sep
 -   Probar con las variables por separado en la formula
 
 |  |
-|------------------------------------------------------------------------|
+|----|
 | Lo mismo. Parece que no hay efecto en ninguna variable pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
 
 Sigue habiendo muchisimo efecto en el BATCH!!!!!!!! :(
@@ -583,7 +583,7 @@ Sigue habiendo muchisimo efecto en el BATCH!!!!!!!! :(
 Voy a probar a hacer el ConQuR con las abundancias relativas a ver qué sale. Pruebo fine tunning automático con covariables de salida.
 
 |  |
-|------------------------------------------------------------------------|
+|----|
 | No es buena idea porque parece que agrupa muchisimo al RUN de referencia y los saca |
 
 ![](images/clipboard-2483119552.png)
@@ -691,9 +691,205 @@ qiime feature-classifier classify-consensus-vsearch\
 --i-reference-reads 2024.09.seqs.fna.qza\
 --i-reference-taxonomy 2024.09.taxonomy.asv.tsv.qza\
 --p-perc-identity 0.97\
+--parallel\
 --o-search-results taxonomy.qza\
 --o-classification BLAST6.qza
 
 <https://ftp.microbio.me/greengenes_release/2024.09/> de aqui descargo la taxonomia y las secuencias.
 
-Tarda mucho (+3h)
+Tarda mucho (+5h)... Lo paro y lo hago por clasificador de SILVA
+
+qiime feature-classifier classify-sklearn\
+--i-classifier silva-138-99-nb-classifier.qza\
+--i-reads rep-seqs-dada.qza\
+--o-classification taxonomy.qza
+
+![](images/clipboard-1391642448.png)
+
+### Batch
+
+Voy a probar varios métodos para ver si puedo reducir el efecto del batch. Para ello voy a comparar lo siguiente:
+
+-   Sin ajustar
+
+-   ConQuR
+
+-   SVAseq
+
+-   Combat
+
+-   MaAsLin2
+
+Para ver el si el efecto se reduce voy a medir Bray-Curtis y hacer PCoA y hacer PERMANOVA con Batch. Tambien voy a hacer PCA para ver distribución. Por ultimo hacer una gráfica de explained variance.
+
+#### Sin ajustar
+
+Voy a ver si hay alguna diferencia entre las muestras que se procesaron por el biobanco y por nosotros
+
+Phylum:
+
+Vemos que hay una muestra claramente contaminada o que la muestra estaba en mal estado. La muestra es la 80_Alb. Procedo a quitarla
+
+![](images/clipboard-568685714.png)
+
+![](images/clipboard-2181236649.png)
+
+Class:
+
+![](images/clipboard-1155896115.png)
+
+![](images/clipboard-2088547668.png)
+
+Genus:
+
+![](images/clipboard-2952124741.png)
+
+![](images/clipboard-2490811140.png)
+
+![](images/clipboard-886484010.png)
+
+![](images/clipboard-4226259282.png)
+
+![](images/clipboard-2235058375.png)
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2013.25.55.png)
+
+![](images/clipboard-2523579229.png)
+
+![](images/clipboard-2997037580.png)
+
+#### ConQuR
+
+Phylum:
+
+![](images/clipboard-4204502515.png)
+
+![](images/clipboard-2612023422.png)
+
+Class:
+
+![](images/clipboard-4272497814.png)
+
+![](images/clipboard-2770465855.png)
+
+Genus:
+
+![](images/clipboard-3671650939.png)
+
+![](images/clipboard-2113217315.png)
+
+![](images/clipboard-3450163175.png)
+
+![](images/clipboard-4114323047.png)
+
+![](images/clipboard-2282860437.png)
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2013.34.04.png)
+
+![](images/clipboard-3293485932.png)
+
+![](images/clipboard-3463470516.png)
+
+#### SVAseq
+
+Phylum:
+
+![](images/clipboard-2341720604.png)
+
+![](images/clipboard-1881948814.png)
+
+Class:
+
+![](images/clipboard-1054426848.png)
+
+![](images/clipboard-1030158377.png)
+
+Genus:
+
+![](images/clipboard-3521607173.png)
+
+![](images/clipboard-2660438328.png)
+
+![](images/clipboard-1393907784.png)
+
+![](images/clipboard-195157030.png)
+
+![](images/clipboard-1559157611.png)
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2013.41.34.png)
+
+![](images/clipboard-838833922.png)
+
+![](images/clipboard-586740943.png)
+
+#### Combat
+
+Phylum:
+
+![](images/clipboard-3276446017.png)
+
+![](images/clipboard-4292714972.png)
+
+Class:
+
+![](images/clipboard-268833203.png)
+
+![](images/clipboard-1626442117.png)
+
+Genus:
+
+![](images/clipboard-865175059.png)
+
+![](images/clipboard-2017384839.png)
+
+![](images/clipboard-806392236.png)
+
+![](images/clipboard-4170569304.png)
+
+![](images/clipboard-1626855715.png)
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2017.09.19.png)
+
+![](images/clipboard-2111551803.png)
+
+![](images/clipboard-445433280.png)
+
+#### MaAsLin2
+
+No se puede hacer con esto. Lo puedo dejar para hacer las comparativas y fijar el batch para reducirlo a 0 o casi 0.
+
+#### MMUPHin
+
+phylum:
+
+![](images/clipboard-2334921409.png)
+
+![](images/clipboard-1127711566.png)
+
+class:
+
+![](images/clipboard-2050555599.png)
+
+![](images/clipboard-3707665819.png)
+
+Genus:
+
+![](images/clipboard-4148059214.png)
+
+![](images/clipboard-3707349096.png)
+
+![](images/clipboard-2944815898.png)
+
+![](images/clipboard-108304589.png)
+
+![](images/clipboard-2132240294.png)
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2017.04.44.png)
+
+![](images/clipboard-3418436334.png)
+
+![](images/clipboard-4123804492.png)
+
+#### Resumen
+
+![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2017.05.30.png)

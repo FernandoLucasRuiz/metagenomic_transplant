@@ -150,6 +150,11 @@ tse_stool_phylum <- agglomerateByRank(tse_stool, rank = "Phylum")
 ## Relative abundance
 
 ```{r}
+plotAbundance(tse_lp, rank = "Phylum", assay.type = "relabundance", add_legend = FALSE)
+```
+
+
+```{r}
 abundancias <- abundancias_relativas_totales(list(tse_lp = tse_lp, 
                                                   tse_bilis = tse_bilis,
                                                   tse_t1 = tse_t1,
@@ -225,6 +230,45 @@ dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
        #plot.margin = margin(t = 20)  # Añade margen superior para el título
         ) +
     coord_polar("y", start = 0) 
+
+
+```
+
+```{r, fig.width=30, fig.height=10}
+tse_lp_phylum <- agglomerateByRank(tse_lp, "Genus")
+
+counts_lp <- as.data.frame(t(assay(tse_lp_phylum, "counts"))) %>% 
+    rownames_to_column(var = "sample")
+
+
+covariates_lp <- colData(tse_lp_phylum) %>%
+    as.data.frame()%>%
+    rownames_to_column(var = "sample")
+
+dplyr::left_join(counts_lp, covariates_lp, by = "sample") %>%
+    dplyr::select(intersect(names(.), names(counts_lp)), -Supervivencia, sample) %>%
+    pivot_longer(-sample, names_to = "Taxon", values_to = "Abundance") %>%
+    dplyr::group_by(sample, Taxon) %>%
+    dplyr::summarize(suma = sum(Abundance)) %>%
+    group_by(sample) %>%
+    mutate(suma_condition = sum(suma),
+           relative_abundance = suma / suma_condition) %>%
+    ggplot(aes(x=sample, y=relative_abundance, fill = Taxon)) +
+    geom_bar(stat = "identity") +
+    #scale_fill_paletteer_d("ggthemes::Tableau_10") + 
+    labs(title = "Phylum Relative Abundance", x = "Taxons", y = "Relative Abundance") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 90, size = 20),
+        # axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "none",  # Posiciona la leyenda abajo
+        #legend.box.margin = margin(t = 10),  # Añade espacio superior para la leyenda
+        legend.spacing.x = unit(0.5, 'cm'),  # Ajusta espacio entre elementos de la leyenda
+        plot.title = element_text(hjust = 0.5, vjust = 10, size = 16),  # Sube el título y ajusta el tamaño
+       #plot.margin = margin(t = 20)  # Añade margen superior para el título
+        ) 
 
 
 ```
@@ -1178,6 +1222,25 @@ for (i in index){
     }
 }
 ```
+
+```{r, fig.height=10, fig.width=10}
+plots <- list()
+for (i in index){
+    p <- plotColData(
+        tse_lp,
+        i, 
+        "nombre_muestra",
+        colour_by = "Supervivencia") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+        labs(expression(Richness[Observed]))
+    
+    plots[[i]] <- p
+    
+}
+
+do.call(grid.arrange, c(plots[1:4], ncol = 1))
+```
+
 
 ```{r}
 tse_t1 <- addAlpha(

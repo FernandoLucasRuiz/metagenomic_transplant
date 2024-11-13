@@ -121,10 +121,10 @@ qiime dada2 denoise-pyro \
 <!-- ``` -->
 
 ```{bash, eval = F}
-<!-- qiime feature-classifier classify-sklearn \ -->
-<!--   --i-classifier silva-138-99-nb-classifier.qza \ -->
-<!--   --i-reads rep-seqs-dada.qza \ -->
-<!--   --o-classification taxonomy.qza -->
+qiime feature-classifier classify-sklearn \
+  --i-classifier silva-138-99-nb-classifier.qza \
+  --i-reads rep-seqs-dada.qza \
+  --o-classification taxonomy.qza
 
 qiime feature-classifier classify-consensus-vsearch \
   --i-query rep-seqs.qza \
@@ -155,7 +155,7 @@ echo "Exportar tabla de conteos a formato biom"
 qiime tools extract --input-path table.qza --output-path exports
 
 echo "Convertir fichero biom a tsv"
-biom convert -i exports/fbcd37c1-7b15-4145-b71f-956bb3073fc6/data/feature-table.biom -o exports/fbcd37c1-7b15-4145-b71f-956bb3073fc6/data/feature-table.tsv --to-tsv
+biom convert -i exports/adbf1ebf-cc02-4e7a-868e-92e0a1ec888f/data/feature-table.biom -o exports/adbf1ebf-cc02-4e7a-868e-92e0a1ec888f/data/feature-table.tsv --to-tsv
 
 echo "Convertir taxonomía a tsv"
 qiime tools export --input-path taxonomy.qza --output-path exports
@@ -168,7 +168,7 @@ qiime tools export --input-path rooted-tree.qza --output-path exports
 
 ```{r}
 
-otutable <- read.table("../RUNS METAGENÓMICA-Proyecto líquidos/qiime/exports/fbcd37c1-7b15-4145-b71f-956bb3073fc6/data/feature-table.tsv", sep = "\t", header = T, skip = 1, comment.char = "")
+otutable <- read.table("../RUNS METAGENÓMICA-Proyecto líquidos/qiime/exports/adbf1ebf-cc02-4e7a-868e-92e0a1ec888f/data/feature-table.tsv", sep = "\t", header = T, skip = 1, comment.char = "")
 otutable <- otutable %>% column_to_rownames(var = "X.OTU.ID") %>%
     dplyr::select(-c("X56_Alb.IonXpress_049", "X57_Alb.IonXpress_050", "X63_Alb.IonXpress_054", "X64_Alb.IonXpress_055", "X71_Alb.IonXpress_060", "X77_Alb.IonXpress_066", "X78_Alb.IonXpress_067", "X80_Alb.IonXpress_068"))
 
@@ -400,4 +400,5 @@ p1
 dfaaaa <- pca$rotation %>% as.data.frame()
 factoextra::fviz_pca_biplot(pca)
 ```
+
 

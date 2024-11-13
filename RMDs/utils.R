@@ -65,7 +65,7 @@ plotear_conqur <- function(pathway_taxa_corrected, objeto_taxa, objeto_batchid){
     
     abundance_table <- as.data.frame(abundance_table)
     rownames(abundance_table) <- abundance_table$random_ids
-    abundance_table <- abundance_table %>% select(-random_ids)
+    abundance_table <- abundance_table %>% dplyr::select(-random_ids)
     
     # Crear rowdata(tax)
     tax <- OTU_table %>%

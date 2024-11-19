@@ -115,90 +115,6 @@ if (nrow(contaminants_prev) != 0){
 }
 ```
 
-## Profundidad de muestreo
-
-```{r}
-# Extraer la matriz de abundancias del objeto TSE
-abundances <- data.frame(t(pretse_LP$abundance_table))
-
-# Calcular la profundidad mínima
-abundances$sample <- rownames(abundances)
-
-abundances_long <- pivot_longer(
-  abundances, 
-  cols = -sample,  # Especificamos que las columnas de especies deben ser pivotadas
-  names_to = "Taxa",           # La nueva columna que contendrá los nombres de las especies
-  values_to = "Abundance"        # La nueva columna que contendrá los valores de abundancia
-)
-
-abundances_long %>% 
-    dplyr::group_by(sample) %>%
-    dplyr::summarize(n_seqs = sum(Abundance)) %>%
-    ggplot(aes(x = n_seqs)) +
-    geom_histogram(bins= 100)
-
-abundances_long %>% 
-    dplyr::group_by(sample) %>%
-    dplyr::summarize(n_seqs = sum(Abundance),
-              n_sings = sum(Abundance == 1),
-              goods = 100*(1 - n_sings / n_seqs)) %>%
-    ggplot(aes(x=n_seqs, y = goods)) +
-    geom_point()
-
-abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
-    arrange(n_seqs)
-
-min_n_seqs <- abundances_long %>% 
-    dplyr::group_by(sample) %>%
-    dplyr::summarize(n_seqs = sum(Abundance),
-              min = min(n_seqs)) %>%
-    pull(min)
-
-quantil1_n_seqs <- abundances_long %>% 
-    dplyr::group_by(sample) %>%
-    dplyr::summarize(n_seqs = sum(Abundance)) %>%
-    pull(n_seqs) %>%            
-    quantile(probs = 0.25)
-
-abundances <- abundances %>% 
-    dplyr::select(-sample)
-
-# Crear curva de rarefacción con los datos originales
-rarecurve_data <- rarecurve(abundances, step=100, col="blue", label=T, cex=0.6)
-map_dfr(rarecurve_data, bind_rows) %>%
-   bind_cols(sample = rownames(abundances),.) %>%
-    pivot_longer(-sample) %>%
-    drop_na() %>%
-    mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
-    select(-name)%>%
-    ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
-    geom_line() +
-    theme_minimal()+
-    labs(x= "number of species", y = "counts", title = "LP")
-
-# Aplicar rarefacción real a las abundancias
-rarefied_abundances_LP <- rrarefy(abundances, sample=quantil1_n_seqs)
-
-# (Opcional) Crear curva de rarefacción con los datos rarefactados
-rarecurve_rarefied_data <- rarecurve(rarefied_abundances_LP, step=100, col="blue", label=T, cex=0.6)
-map_dfr(rarecurve_rarefied_data, bind_rows) %>%
-    bind_cols(sample = rownames(abundances),.) %>%
-    pivot_longer(-sample) %>%
-    drop_na() %>%
-    mutate(n_seqs = as.numeric(str_replace(name, "N", ""))) %>%
-    select(-name)%>%
-    ggplot(aes(x = n_seqs, y = value, group = sample)) +
-    geom_vline(xintercept = quantil1_n_seqs, color = "grey", shape = "dashed") +
-    geom_line() +
-    theme_minimal()+
-    labs(x= "number of species", y = "counts", title = "LP")
-
-pretse_LP$abundance_table <- t(rarefied_abundances_LP) %>% as.data.frame()
-```
-
 ## Crear dataframe guardar estadistica Permanovas
 
 ```{r}
@@ -232,13 +148,13 @@ ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
 ```{r}
 adonis_result <- adonis2(t(pretse_LP$abundance_table) ~ pretse_LP$samples_metadata$Batch)
 print(adonis_result)
-estadisitica_ajuste_batch_df["Sin ajustar", "Batch Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["Sin ajustar", "Batch Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["Sin ajustar", "p.value Batch"] <- adonis_result$`Pr(>F)`[1]
 
 cat("\n------------------\n")
 adonis_result <- adonis2(t(pretse_LP$abundance_table) ~ pretse_LP$samples_metadata$Supervivencia)
 print(adonis_result)
-estadisitica_ajuste_batch_df["Sin ajustar", "Supervivencia Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["Sin ajustar", "Supervivencia Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["Sin ajustar", "p.value Supervivencia"] <- adonis_result$`Pr(>F)`[1]
 ```
 
@@ -489,13 +405,13 @@ ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
 ```{r,warning=FALSE}
 adonis_result <- adonis2(taxa_corrected_salida$tax_final ~ pretse_LP$samples_metadata$Batch)
 print(adonis_result)
-estadisitica_ajuste_batch_df["ConQuR", "Batch Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["ConQuR", "Batch Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["ConQuR", "p.value Batch"] <- adonis_result$`Pr(>F)`[1]
 
 cat("\n------------------\n")
 adonis_result <- adonis2(taxa_corrected_salida$tax_final ~ pretse_LP$samples_metadata$Supervivencia)
 print(adonis_result)
-estadisitica_ajuste_batch_df["ConQuR", "Supervivencia Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["ConQuR", "Supervivencia Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["ConQuR", "p.value Supervivencia"] <- adonis_result$`Pr(>F)`[1]
 
 estadisitica_ajuste_batch_df
@@ -667,7 +583,6 @@ for (i in index){
 grid.arrange(plots$shannon_diversity, plots$gini_dominance, plots$hill_richness, ncol = 1)
 ```
 
-
 # SVA
 ## Preparar datos
 
@@ -785,13 +700,13 @@ ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
 ```{r,warning=FALSE}
 adonis_result <- adonis2(resids^2 ~ pretse_LP$samples_metadata$Batch)
 print(adonis_result)
-estadisitica_ajuste_batch_df["SVA", "Batch Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["SVA", "Batch Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["SVA", "p.value Batch"] <- adonis_result$`Pr(>F)`[1]
 
 cat("\n------------------\n")
 adonis_result <- adonis2(resids^2 ~ pretse_LP$samples_metadata$Supervivencia)
 print(adonis_result)
-estadisitica_ajuste_batch_df["SVA", "Supervivencia Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["SVA", "Supervivencia Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["SVA", "p.value Supervivencia"] <- adonis_result$`Pr(>F)`[1]
 
 estadisitica_ajuste_batch_df
@@ -1006,13 +921,13 @@ ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = Batch)) +
 ```{r,warning=FALSE}
 adonis_result <- adonis2(t(combat_edata3) ~ pretse_LP$samples_metadata$Batch)
 print(adonis_result)
-estadisitica_ajuste_batch_df["Combat", "Batch Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["Combat", "Batch Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["Combat", "p.value Batch"] <- adonis_result$`Pr(>F)`[1]
 
 cat("\n------------------\n")
 adonis_result <- adonis2(t(combat_edata3) ~ pretse_LP$samples_metadata$Supervivencia)
 print(adonis_result)
-estadisitica_ajuste_batch_df["Combat", "Supervivencia Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["Combat", "Supervivencia Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["Combat", "p.value Supervivencia"] <- adonis_result$`Pr(>F)`[1]
 
 estadisitica_ajuste_batch_df
@@ -1039,7 +954,7 @@ class(combat_edata3) # should be a numeric matrix
 
 # Create a TreeSE
 tse <- TreeSummarizedExperiment(
-    assays =  SimpleList(counts = combat_edata3),
+    assays =  SimpleList(counts = combat_edata3^2),
     colData = DataFrame(pretse_LP$samples_metadata),
     rowData = DataFrame(pretse_LP$tax))
 
@@ -1118,10 +1033,7 @@ dplyr::left_join(counts, covariates, by = "sample") %>%
 ## Alpha
 
 ```{r}
-index <-  c("coverage_diversity", "fisher_diversity", "faith_diversity",
-    "gini_simpson_diversity", "inverse_simpson_diversity",
-    "log_modulo_skewness_diversity", "shannon_diversity", "absolute_dominance",
-    "dbp_dominance", "core_abundance_dominance", "gini_dominance", "dmn_dominance",
+index <-  c("shannon_diversity", "gini_dominance", "dmn_dominance",
     "relative_dominance", "simpson_lambda_dominance", "camargo_evenness",
     "pielou_evenness", "simpson_evenness", "evar_evenness", "bulla_evenness",
     "ace_richness", "chao1_richness", "hill_richness", "observed_richness")
@@ -1197,23 +1109,23 @@ grid.arrange(plots$shannon_diversity, plots$gini_dominance, plots$hill_richness,
 ## Bray
 
 ```{r}
-# Calcular la matriz de distancia usando Bray-Curtis
-distance_matrix <- vegdist(t(fit_data2$fitted^2), method = "bray")
-
-# Realizar el PCoA
-pcoa_result <- cmdscale(distance_matrix, k = 2, eig = TRUE)
-
-# Crear un data.frame con los resultados y añadir la información del batch
-pcoa_data <- as.data.frame(pcoa_result$points)
-colnames(pcoa_data) <- c("PCoA1", "PCoA2")
-pcoa_data$batch <- pretse_LP$samples_metadata$Batch
-
-ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
-  geom_point(size = 1) +
-  labs(title = "PCoA Bray-Curtis ConQuR", 
-       x = paste("PCoA1",round(pcoa_result$eig[1], 2), "%"), 
-       y = paste("PCoA1",round(pcoa_result$eig[2], 2), "%"), ) +
-  theme_minimal()
+# # Calcular la matriz de distancia usando Bray-Curtis
+# distance_matrix <- vegdist(t(fit_data2$fitted^2), method = "bray")
+# 
+# # Realizar el PCoA
+# pcoa_result <- cmdscale(distance_matrix, k = 2, eig = TRUE)
+# 
+# # Crear un data.frame con los resultados y añadir la información del batch
+# pcoa_data <- as.data.frame(pcoa_result$points)
+# colnames(pcoa_data) <- c("PCoA1", "PCoA2")
+# pcoa_data$batch <- pretse_LP$samples_metadata$Batch
+# 
+# ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
+#   geom_point(size = 1) +
+#   labs(title = "PCoA Bray-Curtis ConQuR", 
+#        x = paste("PCoA1",round(pcoa_result$eig[1], 2), "%"), 
+#        y = paste("PCoA1",round(pcoa_result$eig[2], 2), "%"), ) +
+#   theme_minimal()
 ```
 
 # MMUPHin
@@ -1280,13 +1192,13 @@ ggplot(pcoa_data, aes(x = PCoA1, y = PCoA2, color = batch)) +
 ```{r,warning=FALSE}
 adonis_result <- adonis2(t(data_abd_adj) ~ pretse_LP$samples_metadata$Batch)
 print(adonis_result)
-estadisitica_ajuste_batch_df["MMUPHin", "Batch Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["MMUPHin", "Batch Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["MMUPHin", "p.value Batch"] <- adonis_result$`Pr(>F)`[1]
 
 cat("\n------------------\n")
 adonis_result <- adonis2(t(data_abd_adj) ~ pretse_LP$samples_metadata$Supervivencia)
 print(adonis_result)
-estadisitica_ajuste_batch_df["MMUPHin", "Supervivencia Varianza"] <- adonis_result$R2[1]* 100
+estadisitica_ajuste_batch_df["MMUPHin", "Supervivencia Varianza"] <- paste(round(adonis_result$R2[1]* 100, 2), "%")
 estadisitica_ajuste_batch_df["MMUPHin", "p.value Supervivencia"] <- adonis_result$`Pr(>F)`[1]
 
 estadisitica_ajuste_batch_df

@@ -1,9 +1,10 @@
 
 source("RMDs/Librerias.R")
 source("RMDs//utils.R")
-load("Rdatas/lectura_conteos.RData")
-load("Rdatas/covariables_limpieza.RData")
-
+otus_lp_t1_t3 <- readRDS("RDSs/otus_lp_t1_t3.RDS")
+otus_bilis <- readRDS("RDSs/otus_bilis.RDS")
+otus_negative_controls <- readRDS("RDSs/otus_negative_controls.RDS")
+covs <-readRDS("RDSs/covs.RDS")
 
 # Colapsar taxonomia para random ids
 
@@ -82,42 +83,8 @@ if (nrow(contaminants_prev) != 0){
     pretse_LP$samples_metadata <- pretse_LP$samples_metadata[rownames(pretse_LP$samples_metadata) != rownames(contaminants_prev),] %>% na.omit()
 }
 
-
-
-## Profundidad de muestreo
-
-# Extraer la matriz de abundancias del objeto TSE
-abundances <- data.frame(t(pretse_LP$abundance_table))
-
-# Calcular la profundidad mínima
-abundances$sample <- rownames(abundances)
-
-abundances_long <- pivot_longer(
-    abundances, 
-    cols = -sample,  # Especificamos que las columnas de especies deben ser pivotadas
-    names_to = "Taxa",           # La nueva columna que contendrá los nombres de las especies
-    values_to = "Abundance"        # La nueva columna que contendrá los valores de abundancia
-)
-
-
-min_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance),
-              min = min(n_seqs)) %>%
-    pull(min)
-
-quantil1_n_seqs <- abundances_long %>% 
-    group_by(sample) %>%
-    summarize(n_seqs = sum(Abundance)) %>%
-    pull(n_seqs) %>%            
-    quantile(probs = 0.25)
-
-abundances <- abundances %>% 
-    dplyr::select(-sample)
-
-
-# Aplicar rarefacción real a las abundancias
-rarefied_abundances_LP <- rrarefy(abundances, sample=quantil1_n_seqs)
+pretse_LP$samples_metadata <- pretse_LP$samples_metadata[rownames(pretse_LP$samples_metadata) != "4_Alb",]
+pretse_LP$abundance_table <- pretse_LP$abundance_table[, colnames(pretse_LP$abundance_table) != "4_Alb"]
 
 
 ## Quitar batch effect
@@ -152,7 +119,7 @@ covar_salida <- covar_LP %>%
 result_tuned <- Tune_ConQuR(tax_tab=taxa_LP,
                             batchid=batchid_LP,
                             covariates=covar_salida,
-                            batch_ref_pool=c("RUN 1", "RUN 2", "RUN 3"),
+                            batch_ref_pool=c("RUN 3"),
                             logistic_lasso_pool=c(T, F),
                             quantile_type_pool=c("standard", "lasso"),
                             simple_match_pool=c(T, F),
@@ -162,5 +129,5 @@ result_tuned <- Tune_ConQuR(tax_tab=taxa_LP,
                             frequencyU=1,
                             num_core = num_cores-2)
 
-saveRDS(result_tuned, "RDSs/result_tuned.RDS")
+saveRDS(result_tuned, "RDSs/result_tuned_2.RDS")
 

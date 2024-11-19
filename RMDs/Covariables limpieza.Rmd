@@ -44,7 +44,7 @@ covs <- covs %>%
 ```
 
 ```{r}
-vis_miss(covs)
+vis_dat(covs)
 ```
 
 ## Retirar variables
@@ -109,7 +109,7 @@ covs$Supervivencia <- factor(covs$Supervivencia, levels = c("SI", "NO"))
 ```
 
 ```{r}
-vis_miss(covs)
+vis_miss(covs,sort_miss = T)
 ```
 
 ## Imputar datos
@@ -125,6 +125,9 @@ saveRDS(covs, "../RDSs/covs.RDS")
 covs <- readRDS("../RDSs/covs.RDS")
 ```
 
+```{r}
+vis_dat(covs)
+```
 
 # Análizar variables
 

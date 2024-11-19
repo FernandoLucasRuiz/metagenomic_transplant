@@ -94,8 +94,6 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
 -   [x] Ver impacto rarified para mitigar impacto de lectura? aprender del tema
 
--   [x] DESeq2 entre variables de salida con los reinos
-
 -   [ ] Community similarity
 
     -   [ ] Probar los diferentes PCoAs
@@ -114,7 +112,7 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [ ] Heatmaps with clusters
 
--   [ ] Differential abundance
+-   [ ] Differential abundance ajustando
 
     -   [ ] DESeq2
 
@@ -125,8 +123,6 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
         -   [ ] Variables donante
 
             -   [ ] Venn diagram
-
-        -   [ ] Variables receptor?
 
     -   [ ] ALDEx2
 
@@ -164,15 +160,13 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [x] Mirar permanova primero
 
--   [ ] Hacer alineamiento con fastq
+-   [x] Hacer alineamiento con fastq
 
-    -   [ ] calidad
+    -   [x] calidad
 
-    -   [ ] abundancia relativa
+    -   [x] abundancia relativa
 
-    -   [ ] batch effect
-
--   [ ]
+-   
 
 ------------------------------------------------------------------------
 
@@ -243,6 +237,8 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
     -   [ ] Mirar analisis <https://pubmed.ncbi.nlm.nih.gov/39507947/>
 
     -   [ ] <https://pubmed.ncbi.nlm.nih.gov/39500537/>
+
+    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/39548431/>
 
 -   [ ] (metagenomic OR microbiota) AND (liver OR hepatic) NOT (gut OR stool OR intestinal)
 
@@ -387,7 +383,7 @@ Estoy probando distintas combinaciones de Runs y de muestras para ver cual es la
 He hecho un programa para recoger todas la información de cada muestra con cada RUN y cada variable
 
 | NO mejora ninguna variable en ningun run. El mejor reduccion de batch es un 4.2 o 3.9 |
-|----|
+|------------------------------------------------------------------------|
 
 Voy a seguir con las combinaciones de donante filtrado para ver la mejor posible combinación con todas las muestras
 
@@ -567,7 +563,7 @@ Lo primero de todo vamos a ver qué covariables son importantes a la hora de sep
 -   Probar primero con todas las variables juntas en la formula
 
 |  |
-|----|
+|------------------------------------------------------------------------|
 | Parece que no hay efecto en ninguna variable con PERMANOVA con p\< 0.05 pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
 
 ![](images/clipboard-2829566327.png)
@@ -575,7 +571,7 @@ Lo primero de todo vamos a ver qué covariables son importantes a la hora de sep
 -   Probar con las variables por separado en la formula
 
 |  |
-|----|
+|------------------------------------------------------------------------|
 | Lo mismo. Parece que no hay efecto en ninguna variable pero en la homogeneidad si sale pvalue \< 0.05 por lo que dicen que no se puede saber si hay efecto en la separación de los grupos. |
 
 Sigue habiendo muchisimo efecto en el BATCH!!!!!!!! :(
@@ -583,7 +579,7 @@ Sigue habiendo muchisimo efecto en el BATCH!!!!!!!! :(
 Voy a probar a hacer el ConQuR con las abundancias relativas a ver qué sale. Pruebo fine tunning automático con covariables de salida.
 
 |  |
-|----|
+|------------------------------------------------------------------------|
 | No es buena idea porque parece que agrupa muchisimo al RUN de referencia y los saca |
 
 ![](images/clipboard-2483119552.png)
@@ -705,6 +701,8 @@ qiime feature-classifier classify-sklearn\
 --o-classification taxonomy.qza
 
 ![](images/clipboard-1391642448.png)
+
+No voy a utilizar Fastq porque no merece la pena tiempo utilizado para el análisis y no hay diferencias en el efecto del batch.
 
 ### Batch
 
@@ -890,6 +888,36 @@ Genus:
 
 ![](images/clipboard-4123804492.png)
 
+![](images/Captura%20de%20pantalla%202024-11-15%20a%20las%2013.01.07.png)
+
 #### Resumen
 
-![](images/Captura%20de%20pantalla%202024-11-12%20a%20las%2017.05.30.png)
+Me decido a utilizar ConQuR ya que es el que más baja la varianza explicada.
+
+### Abundancia diferencial
+
+-   Vamos a empezar con DESeq. Vamos a probar una por una TODAS las covariables (donante y salida). Para ello desarrollamos programa para calcularlo en cada una de las variables. Ajustar por batch y la variable de salida. Mostrar en cada una de ellas los volcano plots.
+
+Voy a seguir el tutorial de <https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html>
+
+En el diseño pongo la formula incluyendo Batch más la condición para ajustar lo que vemos al Batch.
+
+-   Una vez tengamos las especies diferenciadas, hacer venn diagram para ver si se repiten.
+
+### Picrust2
+
+![](images/Captura de pantalla 2024-11-19 a las 10.18.47.png)
+
+En Picruist2 hay que hacerlo con la terminal. Para ello necesito las rep-seqs. Las he generado del analisis de qiime (rep-seqs.qza):
+
+qiime tools export --input-path rep-seqs.qza --output-path exported_data
+
+Veo que tiene la siguiente estructura:
+
+![](images/Captura de pantalla 2024-11-19 a las 11.07.57.png)
+
+Voy a coger mis nombres y los voy a poner ahí de manera aleatoria.
+
+Nada, lo dejo aquí porque no funciona bien con IonTorrent parece ser.
+
+![](images/Captura de pantalla 2024-11-19 a las 11.38.38.png)

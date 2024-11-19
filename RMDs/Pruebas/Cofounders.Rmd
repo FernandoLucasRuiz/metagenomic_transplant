@@ -1,0 +1,136 @@
+---
+title: "Cofounders"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+```{r, warning=FALSE, message=FALSE}
+source("Librerias.R")
+source("utils.R")
+
+tse_lp <- readRDS("../RDSs/tse_lp.RDS")
+tse_lp <- transformAssay(tse_lp, assay.type = "counts", method = "relabundance")
+```
+
+```{r}
+variables <- colnames(colData(tse_lp))[!(colnames(colData(tse_lp)) %in% c("nombre_muestra", "tipo_muestra"))]
+form <- as.formula(paste("assay", "~", paste(variables, collapse = "+")))
+
+tse2 <- addRDA(
+    tse_lp,
+    assay.type = "relabundance",
+    formula = form,
+    distance = "bray")
+
+# Store results of PERMANOVA test
+rda_info <- attr(reducedDim(tse2, "RDA"), "significance")
+rda_info$permanova
+rda_info$homogeneity
+rda_info$permanova %>% 
+    rownames_to_column(var = "variable") %>%
+    dplyr::filter(variable != "Residual", variable != "Model") %>%
+    arrange(desc(`Explained variance`)) %>%
+    ggplot(aes(y = `Explained variance`, x = variable, fill = variable )) +
+    geom_bar(stat = "identity") +
+    coord_flip()
+
+plotRDA(tse2, "RDA", colour.by = "Batch")
+
+plotLoadings(tse2, "RDA", ncomponents = 2, n = 10)
+```
+
+```{r}
+tse2 <- runMDS(
+    tse_lp,
+    FUN = getDissimilarity,
+    method = "bray",
+    assay.type = "counts",
+    name = "MDS_bray")
+
+p <- plotReducedDim(tse2, "MDS_bray", colour_by = "Batch")
+
+# Calculate explained variance
+e <- attr(reducedDim(tse2, "MDS_bray"), "eig")
+rel_eig <- e / sum(e[e > 0])
+
+# Add explained variance for each axis
+p <- p + labs(
+    x = paste("PCoA 1 (", round(100 * rel_eig[[1]], 1), "%", ")", sep = ""),
+    y = paste("PCoA 2 (", round(100 * rel_eig[[2]], 1), "%", ")", sep = "")
+    )
+
+p
+```
+
+```{r}
+variables <- colnames(colData(tse_lp))[!(colnames(colData(tse_lp)) %in% c("nombre_muestra", "tipo_muestra"))]
+
+lista <- list()
+
+for (i in variables) {
+    
+    form <- as.formula(paste("assay", "~", i))
+    
+    tse2 <- addRDA(
+        tse_lp,
+        assay.type = "counts",
+        formula = form,
+        distance = "bray")
+    
+    rda_info <- attr(reducedDim(tse2, "RDA"), "significance")
+ 
+    lista[[i]] <- rda_info
+}
+
+lista
+```
+
+```{r}
+# Quantify dissimilarities in the original feature space
+d0 <- as.matrix(getDissimilarity(t(assay(tse_lp, "relabundance")), "bray"))
+
+# PCoA Ordination
+tse <- runMDS(
+  tse_lp,
+  FUN = getDissimilarity,
+  name = "PCoA",
+  method = "bray",
+  assay.type = "relabundance")
+
+# Quantify dissimilarities in the ordination space
+dp <- as.matrix(dist(reducedDim(tse, "PCoA")))
+
+# Calculate stress i.e. relative difference 
+# in the original and projected dissimilarities
+stress <- sum((dp - d0)^2) / sum(d0^2)
+
+ord <- order(as.vector(d0))
+df <- data.frame(d0 = as.vector(d0)[ord],
+                 dmds = as.vector(dp)[ord])
+
+ggplot(df, aes(x = d0, y = dmds)) +
+  geom_smooth() +
+  geom_point() +
+  labs(title = "Shepard plot",
+       x = "Original distance",
+       y = "MDS distance",
+       subtitle = paste("Stress:", round(stress, 2))) +
+  theme_bw()
+```
+

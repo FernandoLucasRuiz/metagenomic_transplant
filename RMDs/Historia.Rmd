@@ -1,0 +1,128 @@
+---
+title: "Historia"
+author: "Fernando Lucas Ruiz (fernando.lucas@um.es)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    highlight: kate
+    number_sections: true
+    theme: spacelab
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+  pdf_document:
+    toc: true
+subtitle: Cirugía digestiva, endocrina y trasplante de órganos abdominales (IMIB)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+```
+
+# Datos clínicos
+
+En el proceso de selección de covariables, se excluyeron algunas muestras del análisis para garantizar la consistencia y relevancia de los datos. En concreto, se eliminó la muestra **"DAMPS-P39"** debido a que no fue analizada, y la muestra **"18_Alb"** ya que el paciente correspondiente falleció en quirófano, lo que la hacía incompatible con el enfoque del estudio. Estas exclusiones fueron necesarias para mantener la integridad del análisis y asegurar que las muestras incluidas fueran representativas y adecuadas para los objetivos planteados.
+
+```{r}
+# Cogemos covariables
+covs <- read_excel("../TABLA LIQUIDOS TH_microbiota.xlsx", sheet = 2)
+
+covs <- covs %>% 
+    dplyr::rename(id = nombre_muestra,
+                  Type_donation = Donación,
+                  Sex_donor = Sexo_D,
+                  Age_donor = Edad_D,
+                  Survival = Supervivencia)
+
+covs <- covs %>% 
+    dplyr::filter(id != "DAMPS-P39") %>% # quitar muestra DAMPS-P39 porque no se analizó
+    # Quitar muestra 18_Alb porque murió en quirófano
+    dplyr::filter(id != "18_Alb")
+```
+
+## Retirar variables
+
+En el análisis, se seleccionaron específicamente las variables de salida y las características relevantes de los donantes para construir el conjunto de datos final. Las variables elegidas incluyen:
+
+- **`id`**: Identificación única de cada muestra.
+- **`Type_donation`**: Tipo de Type_donation realizada.
+- **`Sex_donor`**, **`Age_donor`**, **`BMI_D`**: Datos demográficos y antropométricos de los donantes.
+- **`GOT_D`**, **`GPT_D`**, **`PT_ACT_D`**: Parámetros bioquímicos que reflejan la función hepática de los donantes.
+- **`Cold_Isch`**: Tiempo de isquemia fría, un indicador clave en trasplantes.
+- **`MEAF_score`**: Puntaje de evaluación para predecir la función inicial del injerto.
+- **`AR`**, **`AHT`**, **`Graft_disfunct`**, **`Biliary_complications`**: Complicaciones postoperatorias relacionadas con rechazo agudo, hipertensión arterial, disfunción del injerto y complicaciones biliares.
+- **`Survival`**: Variable de resultado clave, que indica la Survival del receptor.
+
+```{r}
+# Escogemos las variables de salida
+covs <- covs %>%
+    dplyr::select(id, Type_donation, Sex_donor, Age_donor, BMI_D, GOT_D, GPT_D, PT_ACT_D, Cold_Isch,  MEAF_score, AR, AHT, Graft_disfunct, Biliary_complications, Survival)
+```
+
+
+## Factorizar variables
+
+En este paso del procesamiento de datos, se realizaron varias transformaciones en las variables para adecuarlas a los análisis posteriores. Los cambios realizados son los siguientes:
+
+1. **Conversión de variables categóricas**:
+   Varias variables se recodificaron como factores con niveles descriptivos para facilitar su interpretación:
+   - **`Type_donation`**: Se asignaron los niveles `"DBD"` y `"DCD"` para representar los tipos de Type_donation.
+   - **`Sex_donor`**: Se recodificó en `"Masculino"` y `"Femenino"`.
+   - **`AR`, `AHT`, `Graft_disfunct`, `Biliary_complications`**: Se clasificaron en `"NO"`, `"SI"` y `"NO VALORABLE"`.
+   - **`Survival`**: Se clasificó en `"NO"`, `"SI"` y `"NO VALORABLE"`.
+
+2. **Gestión de valores "NO VALORABLE"**:
+   Todas las ocurrencias del nivel `"NO VALORABLE"` en las variables relevantes se reemplazaron por valores faltantes (`NA`) para evitar sesgos en los análisis.
+
+```{r}
+# cambiar 0s y 1s de Survival
+covs$Survival <- ifelse(covs$Survival == 0, 1, 0)
+
+covs$Type_donation <- factor(covs$Type_donation, levels = c(0, 1), labels = c("DBD", "DCD"))
+covs$Sex_donor <- factor(covs$Sex_donor, levels = c(0,1), labels = c("Masculino", "Femenino"))
+covs$AR <- factor(covs$AR, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$AHT <- factor(covs$AHT, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Graft_disfunct <- factor(covs$Graft_disfunct, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Biliary_complications <- factor(covs$Biliary_complications, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+covs$Survival <- factor(covs$Survival, levels = c(0,1,2), labels = c("NO", "SI", "NO VALORABLE"))
+```
+
+```{r}
+# Cambiar los "NO VALORABLES" por NAs
+covs[covs == "NO VALORABLE"] <- NA
+
+covs$AR <- factor(covs$AR, levels = c("NO", "SI"))
+covs$AHT <- factor(covs$AHT, levels = c("NO", "SI"))
+covs$Graft_disfunct <- factor(covs$Graft_disfunct, levels = c("NO", "SI"))
+covs$Biliary_complications <- factor(covs$Biliary_complications, levels = c("NO", "SI"))
+covs$Survival <- factor(covs$Survival, levels = c("SI", "NO"))
+```
+
+La Figura muestra la distribución de datos faltantes en el conjunto de datos de covariables seleccionadas. Cada columna representa una variable, mientras que cada fila corresponde a una observación. Las áreas en gris indican datos presentes, mientras que las áreas en negro representan los valores faltantes. 
+
+En términos generales, el 96.7% de los datos está presente, mientras que el 3.3% corresponde a valores faltantes. Las variables con un mayor porcentaje de datos faltantes son **PT_ACT_D** (17%), **MEAF_score** (8%), **AR** (7%), **GOT_D** (5%) y **GPT_D** (4%). Otras variables como **Id**, **Type_donation**, **Sex_donor**, **Age_donor** y **Survival** no presentan datos faltantes. Las columnas están ordenadas de acuerdo con el porcentaje de datos faltantes, lo que facilita la identificación visual de las variables más afectadas.
+
+Este análisis permite identificar de forma clara los patrones de ausencia de datos y ayuda en la toma de decisiones sobre estrategias de imputación o exclusión de variables antes de llevar a cabo el análisis estadístico.
+
+```{r, fig.width=10, fig.height=4, fig.cap="Figura: Distribución de datos faltantes en el conjunto de covariables. Cada columna representa una variable y cada fila una observación. Las áreas en gris indican datos presentes, mientras que las áreas en negro representan valores faltantes. Las variables están ordenadas por el porcentaje de datos faltantes, lo cual permite identificar rápidamente las variables más afectadas."}
+vis_miss(covs,sort_miss = T)
+```
+
+## Imputar datos
+
+```{r, eval=FALSE}
+set.seed(1234)
+covs <- complete(mice(covs, method = "rf", m = 5, maxit = 50))
+
+saveRDS(covs, "../RDSs/covs.RDS")
+```
+
+```{r}
+covs <- readRDS("../RDSs/covs.RDS")
+```
+
+```{r}
+vis_dat(covs)
+```
+

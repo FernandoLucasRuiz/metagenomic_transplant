@@ -291,7 +291,490 @@ plotear_diferencias_relabundance <- function(objeto_tse, taxa, covariable) {
 }
 
 
+# DESEq de FLR
 
+deseq_flr <- function(objeto_tse, rara = F, prevalence, taxa_relevante) {
+    
+    variables_salida <- c("Supervivencia", "AR", "AHT", "Biliary_complications")
+    
+    objetos_deseq2 <- list()
+    
+    for (i in variables_salida) {
+        
+        cat("\n\n DESeq2 de: ", i, "\n")
+        
+        counts <- as.data.frame(assay(objeto_tse))
+        
+        if (rara == T) {
+            
+            counts <- counts + 1
+            
+        }
+        
+        metadata <- data.frame(colData(objeto_tse)) %>% 
+            rownames_to_column(var = "sample")
+        
+        metadata$Batch <- factor(metadata$Batch)
+        
+        if (i == "Supervivencia") {
+            metadata[[i]] <- relevel(metadata[[i]], ref = "SI")
+        } else {
+            metadata[[i]] <- relevel(metadata[[i]], ref = "NO")
+        }
+        
+        dds <- DESeqDataSetFromMatrix(countData=counts, 
+                                      colData=metadata, 
+                                      design=as.formula(paste0("~ ", "Batch + ", i)))
+        
+        dds <- DESeq(dds, quiet = T)
+        res <- results(dds)
+        summary(res)
+        
+        res <- res[order(res$padj),]
+        res <- res %>%
+            as.data.frame() %>%
+            rownames_to_column(var = "code")
+        
+        taxa_names <- rowData(objeto_tse) %>%
+            as.data.frame() %>%
+            unite("Taxonomy", Phylum:Species, sep = "_", remove = T) %>%
+            rownames_to_column(var = "code") 
+        # # Separar la columna en múltiples columnas por "_"
+        # separate(Taxonomy, into = c("Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = "_", fill = "right", extra = "merge", remove = F) %>%
+        # # Crear una nueva columna que contenga el último nombre y su prefijo correspondiente según la posición
+        # mutate(Name_microorganism = case_when(
+        #     !is.na(Species) & Species != "" ~ paste("Species", Species, sep = "_"),
+        #     !is.na(Genus) & Genus != "" ~ paste("Genus", Genus, sep = "_"),
+        #     !is.na(Family) & Family != "" ~ paste("Family", Family, sep = "_"),
+        #     !is.na(Order) & Order != "" ~ paste("Order", Order, sep = "_"),
+        #     !is.na(Class) & Class != "" ~ paste("Class", Class, sep = "_"),
+        #     !is.na(Phylum) & Phylum != "" ~ paste("Phylum", Phylum, sep = "_")
+        #     )) %>%
+        # dplyr::select(code, Name_microorganism)
+        
+        res <- dplyr::left_join(res, taxa_names, by = "code") %>%
+            as.data.frame()
+        
+        objetos_deseq2[[i]] <- res
+        
+    }
+    
+    for (i in names(objetos_deseq2)){
+        
+        i_filtrado <- objetos_deseq2[[i]] %>%
+            dplyr::filter(padj < 0.05 & (log2FoldChange < -1 | log2FoldChange > 1)) %>%
+            dplyr::select(code, log2FoldChange, lfcSE, padj, Taxonomy)
+        
+        i_filtrado$variable <- i
+        
+        i_filtrado$prevalencia <- prevalence
+        
+        for (j in 1:nrow(i_filtrado)) {
+            
+            if (i_filtrado[j, "log2FoldChange"] > 0) {
+                
+                i_filtrado[j, "biosis"] <- "Hiperbiosis"
+                
+            } else {
+                
+                i_filtrado[j, "biosis"] <- "Hipobiosis"
+                
+            }
+            
+        }
+        
+        if (nrow(taxa_relevante) == 0){
+            
+            taxa_relevante <- i_filtrado
+            
+        } else {
+            
+            taxa_relevante <- rbind(taxa_relevante, i_filtrado)
+            
+        }
+        
+    }
+    
+    return(list(objetos_deseq2 = objetos_deseq2, taxa_relevante = taxa_relevante))
+    
+}
+
+
+# volcano plot deseq
+
+volcanos_deseq_flr <- function(objeto_deseq){
+    
+    plots <- list()
+    
+    for (i in names(objeto_deseq)) {
+        
+        volcano_data <- as.data.frame(objeto_deseq[[i]])
+        
+        volcano_data[is.na(volcano_data)] <- 1
+        
+        # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+        volcano_data$Regulation <- with(volcano_data, ifelse(padj < 0.05 & log2FoldChange > 1, "Hiperbiosis",
+                                                             ifelse(padj < 0.05 & log2FoldChange < -1, "Hipobiosis", "Not Significant")))
+        
+        p <- ggplot(volcano_data, aes(x=log2FoldChange,
+                                      y=-log10(padj), color=Regulation)) +
+            geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+            scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", code, "")),
+                            color = "black",
+                            max.overlaps = 20, # Reduce el número máximo de solapamientos
+                            point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                            size = 2.5, # Tamaño de fuente más pequeño
+                            segment.size = 0.2, # Líneas de guía más finas
+                            segment.color = 'grey50',
+                            #max.segment.length = unit(0.5, "lines"), # Líneas de guía más cortas
+                            arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+            labs(title = paste0("Volcano Plot: ", i), xlab = "Log2 Fold Change", ylab = "-Log10 P-value") + 
+            theme_minimal() +
+            geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey") +
+            geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+            theme(
+                plot.title = element_text(size = 14, hjust = 0.5),  # Centrar el título
+                legend.position = "bottom",                         # Posicionar la leyenda a la derecha
+                legend.justification = "center",                   # Centrar la leyenda verticalmente
+                legend.key.size = unit(0.5, "cm"),
+                legend.text = element_text(size = 8),
+                legend.title = element_blank(),
+                plot.margin = margin(10, 30, 10, 10)               # Ajustar márgenes para evitar solapamientos
+            )
+        
+        plots[[i]] <- p
+        
+    }
+    
+    return(plots)
+    
+}
+
+
+# volcano plot maaslin2
+
+volcanos_maaslin_flr <- function(objeto_maslin){
+    
+    plots <- list()
+    
+    for (i in names(objeto_maslin)) {
+        
+        volcano_data <- as.data.frame(objeto_maslin[[i]])
+        
+        volcano_data[is.na(volcano_data)] <- 1
+        
+        # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+        volcano_data$Regulation <- with(volcano_data, ifelse(pval < 0.05 & coef > 0, "Hiperbiosis",
+                                                             ifelse(pval < 0.05 & coef < 0, "Hipobiosis", "Not Significant")))
+        
+        p <- ggplot(volcano_data, aes(x=coef,
+                                      y=-log10(pval), color=Regulation)) +
+            geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+            scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", feature, "")),
+                            color = "black",
+                            max.overlaps = 20, # Reduce el número máximo de solapamientos
+                            point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                            size = 2.5, # Tamaño de fuente más pequeño
+                            segment.size = 0.2, # Líneas de guía más finas
+                            segment.color = 'grey50',
+                            max.segment.length = unit(10, "lines"), # Líneas de guía más cortas
+                            arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+            labs(title = paste0("Volcano Plot: ", i), xlab = "Coef. (by MaAsLin2)", ylab = "-Log10 P-value") + 
+            theme_minimal() +
+            geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
+            geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+            theme(
+                plot.title = element_text(size = 14, hjust = 0.5),  # Centrar el título
+                legend.position = "bottom",                         # Posicionar la leyenda a la derecha
+                legend.justification = "center",                   # Centrar la leyenda verticalmente
+                legend.key.size = unit(0.5, "cm"),
+                legend.text = element_text(size = 8),
+                legend.title = element_blank(),
+                plot.margin = margin(10, 30, 10, 10)               # Ajustar márgenes para evitar solapamientos
+            )
+        
+        plots[[i]] <- p
+        
+    }
+    
+    return(plots)
+    
+}
+
+
+# ALDEX de FLR
+
+aldex_flr <- function(objeto_tse, prevalence, taxa_relevante) {
+    
+    variables_salida <- c("Supervivencia", "AR", "AHT", "Biliary_complications")
+    
+    objetos_aldex <- list()
+    
+    for (i in variables_salida) {
+        
+        cat("\n\n ALDEX de: ", i, "\n")
+        
+        selex.sub <- assay(objeto_tse)
+        
+        conds <- as.character(colData(objeto_tse)[[i]])
+        
+        x <- aldex.clr(selex.sub, conds, denom="all", verbose=F)
+        x.tt <- aldex.ttest(x, hist.plot=F, paired.test=FALSE, verbose=FALSE)
+        x.effect <- aldex.effect(x, CI=T, verbose=F, include.sample.summary=F, 
+                                 paired.test=FALSE, glm.conds=NULL, useMC=F)
+        x.all <- data.frame(x.tt,x.effect) %>%
+            rownames_to_column("code")
+        
+        if (i == "Supervivencia") {
+            
+            x.all$effect <- x.all$effect * -1
+            
+        }
+        
+        objetos_aldex[[i]] <- x.all
+        
+    }
+    
+    for (i in names(objetos_aldex)){
+        
+        i_filtrado <- objetos_aldex[[i]] %>%
+            dplyr::filter(we.eBH < 0.05) %>%
+            dplyr::select(code, effect, we.eBH)
+        
+        if (nrow(i_filtrado) == 0 ){
+            next
+            
+        }
+        
+        i_filtrado$variable <- i
+        
+        i_filtrado$prevalencia <- prevalence
+        
+        for (j in 1:nrow(i_filtrado)) {
+            
+            if (i_filtrado[j, "effect"] > 0) {
+                
+                i_filtrado[j, "biosis"] <- "Hiperbiosis"
+                
+            } else {
+                
+                i_filtrado[j, "biosis"] <- "Hipobiosis"
+                
+            }
+            
+        }
+        
+        if (nrow(taxa_relevante) == 0){
+            
+            taxa_relevante <- i_filtrado
+            
+        } else {
+            
+            taxa_relevante <- rbind(taxa_relevante, i_filtrado)
+            
+        }
+        
+    }
+    
+    return(list(objetos_aldex = objetos_aldex, taxa_relevante = taxa_relevante))
+    
+}
+
+# Volcanos ALdex2
+volcanos_aldex_flr <- function(objetos_aldex){
+    
+    plots <- list()
+    
+    for (i in names(objetos_aldex)) {
+        
+        volcano_data <- as.data.frame(objetos_aldex[[i]])
+        
+        volcano_data[is.na(volcano_data)] <- 1
+        
+        # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+        volcano_data$Regulation <- with(volcano_data, ifelse(we.eBH < 0.05 & effect > 0, "Hiperbiosis",
+                                                             ifelse(we.eBH < 0.05 & effect < 0, "Hipobiosis", "Not Significant")))
+        
+        p <- ggplot(volcano_data, aes(x=effect,
+                                      y=-log10(we.eBH), color=Regulation)) +
+            geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+            scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", code, "")),
+                            color = "black",
+                            max.overlaps = 20, # Reduce el número máximo de solapamientos
+                            point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                            size = 2.5, # Tamaño de fuente más pequeño
+                            segment.size = 0.2, # Líneas de guía más finas
+                            segment.color = 'grey50',
+                            max.segment.length = unit(10, "lines"), # Líneas de guía más cortas
+                            arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+            labs(title = paste0("Volcano Plot: ", i), xlab = "Coef. (by MaAsLin2)", ylab = "-Log10 P-value") + 
+            theme_minimal() +
+            geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
+            geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+            theme(
+                plot.title = element_text(size = 14, hjust = 0.5),  # Centrar el título
+                legend.position = "bottom",                         # Posicionar la leyenda a la derecha
+                legend.justification = "center",                   # Centrar la leyenda verticalmente
+                legend.key.size = unit(0.5, "cm"),
+                legend.text = element_text(size = 8),
+                legend.title = element_blank(),
+                plot.margin = margin(10, 30, 10, 10)               # Ajustar márgenes para evitar solapamientos
+            )
+        
+        plots[[i]] <- p
+        
+    }
+    
+    return(plots)
+    
+}
+
+# ancombc2_flr de FLR
+
+ancombc2_flr <- function(objeto_tse, prevalence, taxa_relevante) {
+    
+    variables_salida <- c("Supervivencia", "AR", "AHT", "Biliary_complications")
+    
+    objetos_ancombc <- list()
+    
+    for (i in variables_salida) {
+        
+        cat("\n\n ANCOM-BC2 de: ", i, "\n")
+        
+        ancombc2_out <- ancombc2(
+            objeto_tse,
+            assay.type = "counts",
+            fix_formula = paste0(i, " + Batch"),
+            p_adj_method = "fdr",
+            lib_cut = 0,
+            group = i,
+            struc_zero = TRUE,
+            neg_lb = TRUE,
+            alpha = 0.05,
+            # multi-group comparison is deactivated automatically
+            global = TRUE,
+            n_cl = 4)
+        
+        objetos_ancombc[[i]] <- ancombc2_out
+        
+    }
+    
+    taxa_relevante <- data.frame()
+    
+    for (i in names(objetos_ancombc)){
+        
+        i_filtrado <- objetos_ancombc[[i]]$res %>%
+            dplyr::select(taxon, 3, 19) 
+        
+        i_filtrado <- i_filtrado[i_filtrado[3] < 0.05, ]
+        
+        
+        if (nrow(i_filtrado) == 0 ){
+            next
+            
+        }
+        
+        i_filtrado$variable <- i
+        
+        i_filtrado$prevalencia <- prevalence
+        
+        for (j in 1:nrow(i_filtrado)) {
+            
+            if (i_filtrado[j, 2] > 0) {
+                
+                i_filtrado[j, "biosis"] <- "Hiperbiosis"
+                
+            } else {
+                
+                i_filtrado[j, "biosis"] <- "Hipobiosis"
+                
+            }
+            
+        }
+        
+        colnames(i_filtrado) <- c("taxon", "lfc", "FDR", "variable", "prevalencia", "biosis")
+        
+        if (nrow(taxa_relevante) == 0){
+            
+            taxa_relevante <- i_filtrado
+            
+        } else {
+            
+            taxa_relevante <- rbind(taxa_relevante, i_filtrado)
+            
+        }
+        
+    }
+    
+    return(list(objetos_ancombc = objetos_ancombc, taxa_relevante = taxa_relevante))
+    
+}
+
+
+# volcano_ancombc2
+
+volcanos_ancombc_flr <- function(objetos_ancombc){
+    
+    plots <- list()
+    
+    for (i in names(objetos_ancombc)) {
+        
+        volcano_data <- as.data.frame(objetos_ancombc[[i]]$res) %>%
+            dplyr::select(taxon, 3, 19) 
+        
+        colnames(volcano_data) <- c("taxon", "lfc", "FDR")
+        
+        volcano_data[is.na(volcano_data)] <- 1
+        
+        # Crear un factor para diferenciar entre upregulados, downregulados y no significativos
+        volcano_data$Regulation <- with(volcano_data, ifelse(FDR < 0.05 & lfc > 0, "Hiperbiosis",
+                                                             ifelse(FDR < 0.05 & lfc < 0, "Hipobiosis", "Not Significant")))
+        
+        p <- ggplot(volcano_data, aes(x=lfc,
+                                      y=-log10(FDR), color=Regulation)) +
+            geom_point(aes(size = Regulation, alpha = Regulation), show.legend = TRUE) +
+            scale_size_manual(values = setNames(c(2, 4, 4), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_alpha_manual(values = setNames(c(0.1, 0.75, 0.75), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            scale_color_manual(values = setNames(c("#26828EFF", "#FDE725FF", "#440154FF"), c("Not Significant", "Hiperbiosis" , "Hipobiosis"))) +
+            geom_text_repel(aes(label=ifelse(Regulation != "Not Significant", taxon, "")),
+                            color = "black",
+                            max.overlaps = 20, # Reduce el número máximo de solapamientos
+                            point.padding = unit(0.2, "lines"), # Menos padding alrededor de los puntos
+                            size = 2.5, # Tamaño de fuente más pequeño
+                            segment.size = 0.2, # Líneas de guía más finas
+                            segment.color = 'grey50',
+                            max.segment.length = unit(10, "lines"), # Líneas de guía más cortas
+                            arrow = arrow(length = unit(0.02, "npc"), type = "closed", ends = "last")) +
+            labs(title = paste0("Volcano Plot: ", i), xlab = "Coef. (by MaAsLin2)", ylab = "-Log10 P-value") + 
+            theme_minimal() +
+            geom_vline(xintercept = 0, linetype = "dashed", color = "grey") +
+            geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey") +
+            theme(
+                plot.title = element_text(size = 14, hjust = 0.5),  # Centrar el título
+                legend.position = "bottom",                         # Posicionar la leyenda a la derecha
+                legend.justification = "center",                   # Centrar la leyenda verticalmente
+                legend.key.size = unit(0.5, "cm"),
+                legend.text = element_text(size = 8),
+                legend.title = element_blank(),
+                plot.margin = margin(10, 30, 10, 10)               # Ajustar márgenes para evitar solapamientos
+            )
+        
+        plots[[i]] <- p
+        
+    }
+    
+    return(plots)
+    
+}
 
 
 

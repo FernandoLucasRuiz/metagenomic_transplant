@@ -38,8 +38,11 @@ library(coda.base)
 library(UpSetR)
 library(grid)
 
-# DESEq2
+# Comparativas
 library(DESeq2)
+library(Maaslin2)
+library(ALDEx2)
+library(ANCOMBC)
 
 # Correlation plots
 library(corrplot)

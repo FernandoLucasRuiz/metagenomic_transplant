@@ -116,14 +116,6 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [ ] DESeq2
 
-        -   [ ] Variables de salida
-
-            -   [ ] Venn diagram
-
-        -   [ ] Variables donante
-
-            -   [ ] Venn diagram
-
     -   [ ] ALDEx2
 
     -   [ ] ANCOM-BC
@@ -190,6 +182,10 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [x] <https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009442>
 
+    -   [x] Diferenciar DAA metodos <https://www.nature.com/articles/s41467-022-28034-z#change-history>
+
+    -   [ ] Diferenciar DAA metodos <https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-022-01320-0>
+
 -   liver AND metagenomic
 
     -   [x] REvision liver gut microbiota. <https://pubmed.ncbi.nlm.nih.gov/31657225/>
@@ -224,7 +220,7 @@ Documento de analisis de IonReporter <chrome-extension://efaidnbmnnnibpcajpcglcl
 
     -   [x] <https://pubmed.ncbi.nlm.nih.gov/38977906/>
 
-    -   [ ] <https://pubmed.ncbi.nlm.nih.gov/37821698/>
+    -   [x] <https://pubmed.ncbi.nlm.nih.gov/37821698/>
 
     -   [ ] <https://pubmed.ncbi.nlm.nih.gov/33059075/>
 
@@ -894,19 +890,9 @@ Genus:
 
 Me decido a utilizar ConQuR ya que es el que más baja la varianza explicada.
 
-### Abundancia diferencial
-
--   Vamos a empezar con DESeq. Vamos a probar una por una TODAS las covariables (donante y salida). Para ello desarrollamos programa para calcularlo en cada una de las variables. Ajustar por batch y la variable de salida. Mostrar en cada una de ellas los volcano plots.
-
-Voy a seguir el tutorial de <https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html>
-
-En el diseño pongo la formula incluyendo Batch más la condición para ajustar lo que vemos al Batch.
-
--   Una vez tengamos las especies diferenciadas, hacer venn diagram para ver si se repiten.
-
 ### Picrust2
 
-![](images/Captura de pantalla 2024-11-19 a las 10.18.47.png)
+![](images/Captura%20de%20pantalla%202024-11-19%20a%20las%2010.18.47.png)
 
 En Picruist2 hay que hacerlo con la terminal. Para ello necesito las rep-seqs. Las he generado del analisis de qiime (rep-seqs.qza):
 
@@ -914,10 +900,135 @@ qiime tools export --input-path rep-seqs.qza --output-path exported_data
 
 Veo que tiene la siguiente estructura:
 
-![](images/Captura de pantalla 2024-11-19 a las 11.07.57.png)
+![](images/Captura%20de%20pantalla%202024-11-19%20a%20las%2011.07.57.png)
 
 Voy a coger mis nombres y los voy a poner ahí de manera aleatoria.
 
 Nada, lo dejo aquí porque no funciona bien con IonTorrent parece ser.
 
-![](images/Captura de pantalla 2024-11-19 a las 11.38.38.png)
+![](images/Captura%20de%20pantalla%202024-11-19%20a%20las%2011.38.38.png)
+
+### Abundancia diferencial
+
+-   Vamos a diferenciar entre taxa dominante (90% de prevalencia) y taxa rara (23% de prevalencia). Pongo 23% porque hay un 23% de pacientes con supervivencia NO. De esta manera podemos ver si hay alguna especie que solamente esté en esas muestras pero no en las otras. La taxa rara he añadido un threshold de detección de 10, que significa que la que se encuentre que al menos tenga 10 lecturas. "We can subset the data based on prevalence using [`subsetByPrevalent()`](https://rdrr.io/pkg/mia/man/getPrevalence.html), which filters taxa that exceed a specified prevalence threshold, helping to remove rare features that may be artefacts. Conversely, [`subsetByRare()`](https://rdrr.io/pkg/mia/man/getPrevalence.html) allows us to retain only taxa below the threshold, enabling a focus on rare features within the dataset."
+
+-   Para ello hacemos dos tse aglomerados por rank por especie primero y luego por Genus (vamos a ver si lo hacemos más alto luego).
+
+-   Vamos a probar una por una TODAS las covariables de salida. Para ello desarrollamos programa para calcularlo en cada una de las variables. Ajustar por batch y la variable de salida. Mostrar en cada una de ellas los volcano plots.
+
+-   Upset diagram para ver cuales son comunes.
+
+-   Hacer tabla Especie, log2FC, Factor variable, gráfica relabundance, padj
+
+#### DESEq2
+
+Voy a seguir el tutorial de <https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html>
+
+-   Añado un pseudo-count de 1 porque no funciona en las raras
+-   En el diseño pongo la formula incluyendo Batch más la condición para ajustar lo que vemos al Batch.
+
+Taxa prevalente especies
+
+![](images/clipboard-1518509102.png)
+
+![](images/clipboard-2471349063.png)
+
+Taxa rara especies
+
+![](images/clipboard-3993091681.png)
+
+![](images/clipboard-2609782857.png)
+
+-   Una vez tengamos las especies diferenciadas, hacer venn diagram para ver si se repiten.
+
+taxa_prevalente genus
+
+![](images/clipboard-2771552708.png)
+
+taxa rara genus
+
+![](images/clipboard-1283495899.png)
+
+#### MaAsLin2
+
+-   Voy a proceder de la misma manera que DESeq2
+
+-   <https://huttenhower.sph.harvard.edu/maaslin/>
+
+taxa prevalente especies
+
+![](images/clipboard-2212788338.png)
+
+![](images/clipboard-772090186.png)
+
+taxa rara especies
+
+![](images/clipboard-3125054339.png)
+
+![](images/clipboard-2233206559.png)
+
+taxa prevalente genus
+
+![](images/clipboard-1736106841.png)
+
+![](images/clipboard-772090186.png)
+
+taxa rara genus
+
+![](images/clipboard-2141070981.png)
+
+![](images/clipboard-2233206559.png)
+
+#### Aldex2
+
+-   Voy a proceder de la misma manera que DESeq2
+
+-   <https://bioconductor.org/packages/release/bioc/vignettes/ALDEx2/inst/doc/ALDEx2_vignette.html#7_ALDEx2_outputs>
+
+taxa prevalente especies
+
+![](images/clipboard-327851905.png)
+
+![](images/clipboard-3677007697.png)
+
+taxa rara especies
+
+![](images/clipboard-1972756480.png)
+
+taxa prevalente genus
+
+![](images/clipboard-1745359290.png)
+
+taxa rara genus
+
+![](images/clipboard-3422481342.png)
+
+#### AncomBC2
+
+<https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html>
+
+taxa prevalente species
+
+![](images/clipboard-1592082306.png)
+
+![](images/clipboard-3434545821.png)
+
+taxa rara species
+
+![](images/clipboard-635206048.png)
+
+![](images/clipboard-3206983945.png)
+
+taxa prevalente genus
+
+![](images/clipboard-3853151772.png)
+
+![](images/clipboard-3214325594.png)
+
+taxa rara genus
+
+![](images/clipboard-3846635186.png)
+
+![](images/clipboard-2053590151.png)
+
+### 
